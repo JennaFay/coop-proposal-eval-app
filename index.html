@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบติดตามและประเมินผลการนำเสนอ</title>
-    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <title>ระบบประเมินผลการนำเสนอ (Supabase Auth)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <style>
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
@@ -15,45 +15,51 @@
 <body class="bg-slate-50 min-h-screen py-8 px-4 font-sans text-slate-800">
 
     <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
-        <!-- Header -->
+        
+        <!-- ส่วนหัวข้อหลัก -->
         <div class="border-b border-slate-100 pb-6 mb-6 text-center">
             <h1 class="text-2xl font-bold text-slate-900">ระบบประเมินการนำเสนอ (สำหรับกรรมการ)</h1>
-            <p class="text-slate-500 mt-1 text-sm">เข้าใช้งานด้วย Email เพื่อบันทึกร่างและเรียกดูคะแนนของนักศึกษาทุกคน</p>
+            <p class="text-slate-500 mt-1 text-sm">ล็อกอินเข้าสู่ระบบอย่างปลอดภัยด้วยบัญชีของท่านเพื่อจัดการคะแนน</p>
         </div>
 
-        <!-- กล่องระบุ Email ของกรรมการ -->
-        <div class="bg-slate-50 p-5 rounded-xl mb-8 border border-slate-100 shadow-sm">
-            <label class="block text-sm font-semibold text-slate-700 mb-2">อีเมลกรรมการผู้ประเมิน (Email) *</label>
-            <div class="flex flex-col sm:flex-row gap-3">
-                <input type="email" id="evaluator_email" 
-                    class="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition"
-                    placeholder="ตัวอย่าง: somchai.j@university.ac.th">
-                <button onclick="loadDashboard()" 
-                    class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm hover:shadow flex justify-center items-center gap-1">
-                    🔍 โหลดตารางคะแนน
+        <!-- หน้าต่าง LOGIN (จะแสดงเฉพาะตอนยังไม่ได้ล็อกอิน) -->
+        <div id="login_section" class="bg-slate-50 p-6 rounded-xl border border-slate-100 shadow-sm max-w-md mx-auto">
+            <h2 class="text-md font-bold text-slate-800 mb-2 text-center">🔐 กรุณาเข้าสู่ระบบก่อนใช้งาน</h2>
+            <p class="text-xs text-slate-500 mb-4 text-center">พิมพ์อีเมลของท่าน ระบบจะส่งลิงก์เข้าสู่ระบบ (Magic Link) ไปที่กล่องข้อความเข้าทันที</p>
+            <div class="space-y-3">
+                <input type="email" id="auth_email" 
+                    class="w-full px-4 py-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition"
+                    placeholder="example@university.ac.th">
+                <button onclick="handleLogin()" 
+                    class="w-full px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm flex justify-center items-center gap-1">
+                    ✉️ ส่งลิงก์เข้าสู่ระบบทาง Email
                 </button>
             </div>
         </div>
 
-        <!-- พื้นที่ตารางแสดงผลลัพธ์ -->
-        <div id="dashboard_section" class="hidden">
+        <!-- หน้าต่าง DASHBOARD (จะแสดงเมื่อล็อกอินสำเร็จแล้ว) -->
+        <div id="dashboard_section" class="hidden animate-fade-in">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400 block">ผู้ประเมินปัจจุบัน:</span>
+                    <span id="evaluator_badge" class="text-sm font-bold text-slate-700 font-mono"></span>
+                </div>
+                <button onclick="handleLogout()" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 rounded-lg text-xs font-semibold transition shadow-xs">
+                    🚪 ออกจากระบบ
+                </button>
+            </div>
+            
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    📋 ตารางสรุปคะแนนประจำตัวท่าน
-                </h2>
-                <span id="evaluator_badge" class="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full border border-blue-100 font-mono"></span>
+                <h2 class="text-lg font-bold text-slate-800">📋 รายชื่อนักศึกษาและผลการประเมิน</h2>
             </div>
             
             <div class="overflow-x-auto border border-slate-100 rounded-xl shadow-sm bg-white">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 text-xs uppercase font-bold tracking-wider">
-                            <th class="p-4">รหัส / ชื่อนักศึกษา</th>
-                            <th class="p-4 text-center">Q1 (เนื้อหา)</th>
-                            <th class="p-4 text-center">Q2 (การพูด)</th>
-                            <th class="p-4 text-center">Q3 (สื่อสไลด์)</th>
-                            <th class="p-4 text-center">Q4 (เวลา)</th>
-                            <th class="p-4 text-center">สถานะการบันทึก</th>
+                            <th class="p-4">รหัสนักศึกษา</th>
+                            <th class="p-4">ชื่อ - นามสกุล</th>
+                            <th class="p-4 text-center">สถานะ</th>
                             <th class="p-4 text-center">การจัดการ</th>
                         </tr>
                     </thead>
@@ -65,75 +71,29 @@
         </div>
     </div>
 
-    <!-- MODAL POPUP ฟอร์มลงคะแนน -->
+    <!-- MODAL POPUP ฟอร์มลงคะแนนที่ดึงโจทย์และเกณฑ์รูบริกแบบ Dynamic -->
     <div id="evaluationModal" class="fixed inset-0 bg-slate-900/40 hidden flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-xs">
         <div class="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 relative shadow-xl border border-slate-100">
             <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-2xl transition">&times;</button>
             
             <div class="mb-5 border-b border-slate-100 pb-3">
-                <span class="text-xs font-bold text-blue-600 tracking-wide uppercase">กำลังประเมินผล</span>
+                <span class="text-xs font-bold text-blue-600 tracking-wide uppercase">บันทึกผลการให้คะแนน</span>
                 <h3 id="modal_student_name" class="text-xl font-bold text-slate-800 mt-0.5"></h3>
+                <p class="text-xs text-slate-400 font-mono mt-1" id="modal_student_id_display"></p>
             </div>
 
             <form id="evaluationForm" class="space-y-5">
                 <input type="hidden" id="modal_student_id">
 
-                <!-- เกณฑ์ Rubric 1-4 -->
-                <div class="space-y-4">
-                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                        <p class="text-sm font-semibold text-slate-800 mb-2.5">1. เนื้อหาและความถูกต้องของข้อมูล (1-4) *</p>
-                        <div class="grid grid-cols-4 gap-2 text-xs text-center font-medium text-slate-600">
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q1" value="1" required class="mb-1"><br>1</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q1" value="2"><br>2</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q1" value="3"><br>3</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q1" value="4"><br>4</label>
-                        </div>
-                    </div>
-                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                        <p class="text-sm font-semibold text-slate-800 mb-2.5">2. ทักษะการพูด บุคลิกภาพ และการถ่ายทอด (1-4) *</p>
-                        <div class="grid grid-cols-4 gap-2 text-xs text-center font-medium text-slate-600">
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q2" value="1" required class="mb-1"><br>1</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q2" value="2"><br>2</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q2" value="3"><br>3</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q2" value="4"><br>4</label>
-                        </div>
-                    </div>
-                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                        <p class="text-sm font-semibold text-slate-800 mb-2.5">3. ความสวยงามและการจัดระเบียบสื่อสไลด์ (1-4) *</p>
-                        <div class="grid grid-cols-4 gap-2 text-xs text-center font-medium text-slate-600">
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q3" value="1" required class="mb-1"><br>1</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q3" value="2"><br>2</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q3" value="3"><br>3</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q3" value="4"><br>4</label>
-                        </div>
-                    </div>
-                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                        <p class="text-sm font-semibold text-slate-800 mb-2.5">4. การรักษาเวลาและการตอบคำถามซักถาม (1-4) *</p>
-                        <div class="grid grid-cols-4 gap-2 text-xs text-center font-medium text-slate-600">
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q4" value="1" required class="mb-1"><br>1</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q4" value="2"><br>2</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q4" value="3"><br>3</label>
-                            <label class="p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block"><input type="radio" name="q4" value="4"><br>4</label>
-                        </div>
-                    </div>
-                </div>
+                <!-- พื้นที่สำหรับสร้างคำถามรูบริกแบบ Dynamic จากฐานข้อมูล -->
+                <div id="dynamic_questions_area" class="space-y-4"></div>
 
-                <!-- คำถามปลายเปิด -->
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">5. ข้อคิดเห็นชื่นชม / จุดเด่นของการนำเสนอ</label>
-                    <textarea id="q5_strengths" rows="2" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white" placeholder="ระบุสิ่งที่กลุ่มนี้ทำได้ดีมาก..."></textarea>
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">6. ข้อแนะนำเพื่อการพัฒนาและปรับปรุงเพิ่มเติม</label>
-                    <textarea id="q6_improvements" rows="2" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white" placeholder="ระบุสิ่งที่ยังขาดตกบกพร่องอยู่..."></textarea>
-                </div>
-
-                <div class="flex flex-col sm:flex-row gap-3 pt-3 border-t border-slate-100">
-                    <button type="button" onclick="executeSubmit(true)" class="flex-1 py-2.5 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-xl text-sm transition">
+                <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" id="btn_save_draft" onclick="executeSubmit(false)" class="flex-1 py-2.5 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-xl text-sm transition">
                         💾 บันทึกร่างชั่วคราว
                     </button>
-                    <button type="button" onclick="executeSubmit(false)" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition">
-                        🚀 ส่งผลสมบูรณ์ (Submit)
+                    <button type="button" id="btn_final_submit" onclick="executeSubmit(true)" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition shadow-sm">
+                        🚀 ส่งผลสมบูรณ์ (ล็อกถาวร ห้ามแก้ไข)
                     </button>
                 </div>
             </form>
@@ -142,147 +102,234 @@
 
     <!-- ------------------ JAVASCRIPT LOGIC ------------------ -->
     <script>
-        // ⚠️ ใส่ Key ของคุณตรงนี้
+        // ⚠️ กรุณาเติมค่าคอนฟิก Supabase ส่วนตัวของคุณที่นี่
         const dbURL = "https://mwdnpxuqqdzcnjqpjzdh.supabase.co";
         const dbAnonKey = "sb_publishable_mVQGz4MlFDMgCfg0N8gTlw_LxfGmbyP";
         
-        // สร้าง Client เชื่อมต่อด้วยตัวแปรชื่อ db ไม่ซ้ำกับใคร
         const db = supabase.createClient(dbURL, dbAnonKey);
         
-        let currentEvaluatorEmail = ""; 
-        let evaluatorScores = []; 
+        let currentUser = null;
+        let questionsCache = [];
+        let currentEvaluatorScores = [];
 
-        function validateEmail(email) {
-            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return re.test(email);
+        // ตรวจสอบสถานะการล็อกอินทุกครั้งที่เปิดหน้าเว็บ
+        document.addEventListener("DOMContentLoaded", async () => {
+            const { data: { session } } = await db.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                showDashboard();
+            } else {
+                showLogin();
+            }
+
+            // ดักฟังเหตุการณ์การเปลี่ยนสถานะล็อกอิน (เมื่อคลิกลิงก์จากเมลเข้ามา)
+            db.auth.onAuthStateChange((_event, session) => {
+                if (session) {
+                    currentUser = session.user;
+                    showDashboard();
+                } else {
+                    currentUser = null;
+                    showLogin();
+                }
+            });
+        });
+
+        function showLogin() {
+            document.getElementById('login_section').classList.remove('hidden');
+            document.getElementById('dashboard_section').classList.add('hidden');
         }
 
-        async function loadDashboard() {
-            currentEvaluatorEmail = document.getElementById('evaluator_email').value.trim().toLowerCase();
+        async function showDashboard() {
+            document.getElementById('login_section').classList.add('hidden');
+            document.getElementById('dashboard_section').classList.remove('hidden');
+            document.getElementById('evaluator_badge').innerText = currentUser.email;
             
-            if (!currentEvaluatorEmail) {
-                alert("⚠️ กรุณากรอกระบุอีเมลผู้ประเมินก่อนครับ");
-                return;
-            }
-            if (!validateEmail(currentEvaluatorEmail)) {
-                alert("⚠️ รูปแบบอีเมลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง เช่น name@email.com");
-                return;
-            }
+            // โหลดโจทย์และตารางข้อมูลหลังจากล็อกอินผ่าน
+            await fetchQuestions();
+            await renderStudentTable();
+        }
 
+        // ระบบส่งลิงก์ Magic Link ไปยังอีเมล
+        async function handleLogin() {
+            const email = document.getElementById('auth_email').value.trim().toLowerCase();
+            if (!email) { alert("⚠️ กรุณากรอกอีเมลของท่านก่อนครับ"); return; }
+            
+            const { error } = await db.auth.signInWithOtp({
+                email: email,
+                options: { emailRedirectTo: window.location.href }
+            });
+
+            if (error) {
+                alert("เกิดข้อผิดพลาด: " + error.message);
+            } else {
+                alert("🚀 ระบบส่ง Magic Link ไปที่อีเมลของท่านเรียบร้อยแล้ว! กรุณากรอกเข้ากล่องข้อความเพื่อกดยืนยันตัวตนเข้าหน้าเว็บครับ");
+            }
+        }
+
+        async function handleLogout() {
+            await db.auth.signOut();
+            window.location.reload();
+        }
+
+        // ดึงรายการคำถามรูบริกจาก DB
+        async function fetchQuestions() {
+            const { data, error } = await db.from('evaluation_questions').select('*').order('question_number');
+            if (!error) questionsCache = data;
+        }
+
+        // แสดงผลตารางนักศึกษาตามโครงสร้างตารางเวอร์ชันใหม่
+        async function renderStudentTable() {
             try {
-                const { data: students, error: errStudents } = await db.from('students').select('*').order('id');
+                // ดึงข้อมูลโดยตรงจากโครงสร้างฟิลด์ใหม่ (student_id และ name)
+                const { data: students, error: errStudents } = await db.from('students').select('student_id, name').order('student_id');
                 if (errStudents) throw errStudents;
 
-                const { data: evals, error: errEvals } = await db.from('evaluations').select('*').eq('evaluator_email', currentEvaluatorEmail);
+                const { data: evals, error: errEvals } = await db.from('new_evaluations').select('*').eq('evaluator_id', currentUser.id);
                 if (errEvals) throw errEvals;
-
-                evaluatorScores = evals;
+                currentEvaluatorScores = evals;
 
                 const tbody = document.getElementById('student_table_body');
                 tbody.innerHTML = "";
 
                 students.forEach(student => {
-                    const matchedScore = evaluatorScores.find(e => e.student_id === student.id);
-                    const studentIdString = String(student.id).padStart(10, '0');
-                    
+                    // ตรวจสอบสถานะการประเมินโดยอ้างอิงจาก BIGINT student_id ของแต่ละแถว
+                    const studentRecords = currentEvaluatorScores.filter(e => e.student_id === student.student_id);
+                    const isSubmitted = studentRecords.some(r => r.is_submitted === true);
+                    const isStarted = studentRecords.length > 0;
+
                     let badgeHTML = `<span class="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md text-xs font-medium">⏳ ยังไม่ประเมิน</span>`;
-                    if (matchedScore) {
-                        badgeHTML = matchedScore.is_draft 
-                            ? `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-100">📝 ร่างชั่วคราว</span>`
-                            : `<span class="px-2.5 py-1 bg-green-50 text-green-700 rounded-md text-xs font-bold border border-green-100">✓ ส่งแล้ว</span>`;
+                    if (isStarted) {
+                        badgeHTML = isSubmitted
+                            ? `<span class="px-2.5 py-1 bg-green-50 text-green-700 rounded-md text-xs font-bold border border-green-100">🔒 ส่งแล้ว (ล็อก)</span>`
+                            : `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-100">📝 ร่างชั่วคราว</span>`;
                     }
 
                     const tableRow = `
                         <tr class="hover:bg-slate-50/80 transition duration-150">
-                            <td class="p-4">
-                                <span class="block text-xs font-mono text-slate-400 font-semibold">${studentIdString}</span>
-                                <span class="font-semibold text-slate-800">${student.name}</span>
-                            </td>
-                            <td class="p-4 text-center font-bold text-slate-600">${matchedScore?.q1 || '-'}</td>
-                            <td class="p-4 text-center font-bold text-slate-600">${matchedScore?.q2 || '-'}</td>
-                            <td class="p-4 text-center font-bold text-slate-600">${matchedScore?.q3 || '-'}</td>
-                            <td class="p-4 text-center font-bold text-slate-600">${matchedScore?.q4 || '-'}</td>
+                            <td class="p-4 font-mono text-slate-600 font-semibold">${student.student_id}</td>
+                            <td class="p-4 font-semibold text-slate-800">${student.name}</td>
                             <td class="p-4 text-center">${badgeHTML}</td>
                             <td class="p-4 text-center">
-                                <button onclick="openEvaluationModal('${student.id}', '${student.name}')" 
-                                    class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold shadow-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition">
-                                    ${matchedScore ? '⚙️ แก้ไขคะแนน' : '✍️ ประเมินผล'}
-                                </button>
+                                ${isSubmitted 
+                                    ? `<button disabled class="px-3 py-1.5 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-xs font-semibold cursor-not-allowed">✓ ประเมินแล้ว</button>`
+                                    : `<button onclick="openEvaluationModal('${student.student_id}', '${student.name}')" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold shadow-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition">✍️ ${isStarted ? 'แก้ไขร่าง' : 'ลงคะแนน'}</button>`
+                                }
                             </td>
                         </tr>
                     `;
                     tbody.insertAdjacentHTML('beforeend', tableRow);
                 });
-
-                document.getElementById('evaluator_badge').innerText = `Email: ${currentEvaluatorEmail}`;
-                document.getElementById('dashboard_section').classList.remove('hidden');
-
             } catch (error) {
-                console.error(error);
-                alert("เกิดข้อผิดพลาดคลาดเคลื่อน: " + error.message);
+                console.error("Error loading table:", error);
             }
         }
 
-        const fetchRadioValue = (name) => {
-            const el = document.querySelector(`input[name="${name}"]:checked`);
-            return el ? parseInt(el.value) : null;
-        };
-
+        // เปิด Modal ประเมิน และใส่คำอธิบายรูบริกที่ดึงมาจากฐานข้อมูลกำกับไว้ใต้หมายเลขคะแนน 1-4
         function openEvaluationModal(studentId, studentName) {
             document.getElementById('modal_student_id').value = studentId;
             document.getElementById('modal_student_name').innerText = studentName;
-            document.getElementById('evaluationForm').reset();
+            document.getElementById('modal_student_id_display').innerText = "รหัสนักศึกษา: " + studentId;
+            
+            const area = document.getElementById('dynamic_questions_area');
+            area.innerHTML = "";
 
-            const cache = evaluatorScores.find(e => e.student_id === parseInt(studentId));
-            if (cache) {
-                assignRadioValue('q1', cache.q1);
-                assignRadioValue('q2', cache.q2);
-                assignRadioValue('q3', cache.q3);
-                assignRadioValue('q4', cache.q4);
-                document.getElementById('q5_strengths').value = cache.q5_strengths || "";
-                document.getElementById('q6_improvements').value = cache.q6_improvements || "";
-            }
+            const studentRecords = currentEvaluatorScores.filter(e => e.student_id === parseInt(studentId));
+
+            questionsCache.forEach(q => {
+                const answer = studentRecords.find(r => r.question_id === q.id);
+                let inputHTML = "";
+
+                if (q.question_type === 'rubric') {
+                    const descs = {
+                        1: q.rubric_desc_1 || "ปรับปรุง",
+                        2: q.rubric_desc_2 || "พอใช้",
+                        3: q.rubric_desc_3 || "ดี",
+                        4: q.rubric_desc_4 || "ดีมาก"
+                    };
+
+                    inputHTML = `
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs text-center font-medium text-slate-600">
+                            ${[1, 2, 3, 4].map(num => `
+                                <label class="p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block text-left sm:text-center transition">
+                                    <input type="radio" name="q_${q.id}" value="${num}" ${answer?.score_value === num ? 'checked' : ''} class="mb-1 mr-2 sm:mr-0">
+                                    <span class="font-bold text-sm sm:block text-blue-600">${num}</span>
+                                    <span class="block text-[11px] text-slate-400 mt-1 font-normal leading-tight">${descs[num]}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    inputHTML = `
+                        <textarea id="q_${q.id}" rows="2" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white" placeholder="พิมพ์คำตอบ/ความคิดเห็นที่นี่...">${answer?.text_value || ""}</textarea>
+                    `;
+                }
+
+                const block = `
+                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <p class="text-sm font-semibold text-slate-800 mb-2.5">${q.question_number}. ${q.question_text}</p>
+                        ${inputHTML}
+                    </div>
+                `;
+                area.insertAdjacentHTML('beforeend', block);
+            });
 
             document.getElementById('evaluationModal').classList.remove('hidden');
         }
 
-        async function executeSubmit(isDraftMode) {
-            const studentId = document.getElementById('modal_student_id').value;
+        // จัดการส่งข้อมูลคะแนน (รองรับทั้งเซฟดราฟต์ชั่วคราว และกดส่งสมบูรณ์ล็อกถาวร)
+        async function executeSubmit(isFinalSubmission) {
+            const studentId = parseInt(document.getElementById('modal_student_id').value);
+            const payloads = [];
 
-            const payload = {
-                evaluator_email: currentEvaluatorEmail,
-                student_id: parseInt(studentId),
-                q1: fetchRadioValue('q1'),
-                q2: fetchRadioValue('q2'),
-                q3: fetchRadioValue('q3'),
-                q4: fetchRadioValue('q4'),
-                q5_strengths: document.getElementById('q5_strengths').value || null,
-                q6_improvements: document.getElementById('q6_improvements').value || null,
-                is_draft: isDraftMode
-            };
-
-            if (!isDraftMode && (!payload.q1 || !payload.q2 || !payload.q3 || !payload.q4)) {
-                alert("❌ ไม่สามารถส่งผลได้! กรุณากรอกคะแนนเกณฑ์รูบริกให้ครบทุกข้อก่อนส่งผลสมบูรณ์");
+            if (isFinalSubmission && !confirm("⚠️ คุณแน่ใจใช่ไหมที่จะส่งผลสมบูรณ์? หากส่งแล้วระบบจะทำการล็อกตารางของนักศึกษารายนี้ถาวรและจะไม่สามารถกลับมาแก้ไขคะแนนได้อีกนะยืนยันทำต่อไหมครับ")) {
                 return;
             }
 
+            // รวบรวมข้อมูลตามแต่ละหัวข้อคำถามในแคช
+            for (let q of questionsCache) {
+                let scoreVal = null;
+                let textVal = null;
+
+                if (q.question_type === 'rubric') {
+                    const checkedEl = document.querySelector(`input[name="q_${q.id}"]:checked`);
+                    scoreVal = checkedEl ? parseInt(checkedEl.value) : null;
+                    
+                    if (isFinalSubmission && !scoreVal) {
+                        alert(`❌ กรุณาประเมินข้อ ${q.question_number} ให้เรียบร้อยก่อนส่งผลสมบูรณ์ครับ`);
+                        return;
+                    }
+                } else {
+                    textVal = document.getElementById(`q_${q.id}`).value.trim() || null;
+                }
+
+                payloads.push({
+                    evaluator_id: currentUser.id,
+                    evaluator_email: currentUser.email,
+                    student_id: studentId,
+                    question_id: q.id,
+                    score_value: scoreVal,
+                    text_value: textVal,
+                    is_submitted: isFinalSubmission
+                });
+            }
+
             try {
+                // อัปเดตหรือเพิ่มข้อมูล (Upsert) บันทึกลงตารางใหม่
                 const { error } = await db
-                    .from('evaluations')
-                    .upsert(payload, { onConflict: 'evaluator_email, student_id' });
+                    .from('new_evaluations')
+                    .upsert(payloads, { onConflict: 'evaluator_id, student_id, question_id' });
 
                 if (error) throw error;
 
                 closeModal();
-                await loadDashboard(); 
-                alert(isDraftMode ? "💾 บันทึกร่างชั่วคราวเรียบร้อยแล้ว" : "🚀 ส่งผลประเมินสมบูรณ์เรียบร้อยแล้ว");
+                await renderStudentTable();
+                alert(isFinalSubmission ? "🔒 ส่งผลประเมินสมบูรณ์และล็อกข้อมูลเข้าฐานข้อมูลเรียบร้อยแล้วครับ" : "💾 บันทึกแบบร่างชั่วคราวสำเร็จ");
             } catch (err) {
-                alert("เกิดข้อผิดพลาดในการบันทึก: " + err.message);
+                alert("ระบบปฏิเสธการเข้าถึง (สิทธิ์อาจถูกล็อกแล้ว): " + err.message);
             }
         }
 
         function closeModal() { document.getElementById('evaluationModal').classList.add('hidden'); }
-        function assignRadioValue(name, val) { if (val) { const element = document.querySelector(`input[name="${name}"][value="${val}"]`); if (element) element.checked = true; } }
     </script>
 </body>
 </html>
