@@ -24,7 +24,6 @@
         <div class="bg-slate-50 p-5 rounded-xl mb-8 border border-slate-100 shadow-sm">
             <label class="block text-sm font-semibold text-slate-700 mb-2">อีเมลกรรมการผู้ประเมิน (Email) *</label>
             <div class="flex flex-col sm:flex-row gap-3">
-                <!-- เปลี่ยน type เป็น email และปรับ placeholder -->
                 <input type="email" id="evaluator_email" 
                     class="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition"
                     placeholder="ตัวอย่าง: somchai.j@university.ac.th">
@@ -58,7 +57,7 @@
                         </tr>
                     </thead>
                     <tbody id="student_table_body" class="text-sm divide-y divide-slate-100">
-                        <!-- วิ่งมาจาก JavaScript -->
+                        <!-- รายชื่อจะวิ่งมาจาก JavaScript -->
                     </tbody>
                 </table>
             </div>
@@ -140,13 +139,13 @@
         </div>
     </div>
 
-<!-- ------------------ JAVASCRIPT LOGIC (เวอร์ชันเปลี่ยนชื่อตัวแปรหนีไลบรารี) ------------------ -->
+    <!-- ------------------ JAVASCRIPT LOGIC ------------------ -->
     <script>
-        // เปลี่ยนชื่อจาก supabase เป็น db เพื่อไม่ให้ตีกับ Library ของ Supabase
-        const dbURL = "YOUR_SUPABASE_URL";
-        const dbAnonKey = "YOUR_SUPABASE_ANON_KEY";
+        // ⚠️ ใส่ Key ของคุณตรงนี้
+        const dbURL = "https://mwdnpxuqqdzcnjqpjzdh.supabase.co";
+        const dbAnonKey = "sb_publishable_mVQGz4MlFDMgCfg0N8gTlw_LxfGmbyP";
         
-        // เรียกใช้ supabase.createClient แล้วฝากไว้ในตัวแปรชื่อ db
+        // สร้าง Client เชื่อมต่อด้วยตัวแปรชื่อ db ไม่ซ้ำกับใคร
         const db = supabase.createClient(dbURL, dbAnonKey);
         
         let currentEvaluatorEmail = ""; 
@@ -170,7 +169,6 @@
             }
 
             try {
-                // ดึงข้อมูลผ่านตัวแปร db
                 const { data: students, error: errStudents } = await db.from('students').select('*').order('id');
                 if (errStudents) throw errStudents;
 
@@ -268,7 +266,6 @@
             }
 
             try {
-                // บันทึกผ่านตัวแปร db
                 const { error } = await db
                     .from('evaluations')
                     .upsert(payload, { onConflict: 'evaluator_email, student_id' });
