@@ -156,7 +156,7 @@
             
             const { error } = await db.auth.signInWithOtp({
                 email: email,
-                options: { emailRedirectTo: window.location.href }
+                options: { emailRedirectTo: 'https://jennafay.github.io/coop-proposal-eval-app/' }
             });
 
             if (error) {
