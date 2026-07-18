@@ -3,538 +3,461 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบประเมินผลโครงงานสหกิจศึกษา</title>
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Google Fonts (Sarabun) -->
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>ระบบประเมินผลการนำเสนอ (Magic Link Auth & Rubric Summary)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <style>
-        body {
-            font-family: 'Sarabun', sans-serif;
-            background-color: #f8f9fa;
-        }
-        .card {
-            border: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            margin-bottom: 1.5rem;
-        }
-        .rubric-option {
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .rubric-option:hover {
-            background-color: #e9ecef;
-        }
-        .nav-tabs .nav-link {
-            color: #495057;
-            font-weight: 500;
-        }
-        .nav-tabs .nav-link.active {
-            font-weight: 600;
-            color: #0d6efd;
-        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 min-h-screen py-8 px-4 font-sans text-slate-800">
 
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">Co-op Proposal Evaluation</a>
-            <div class="d-flex align-items-center">
-                <span id="user-email-display" class="text-white-50 me-3"></span>
-                <button id="btn-logout" class="btn btn-outline-light btn-sm d-none" onclick="handleLogout()">ออกจากระบบ</button>
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
+        
+        <!-- ส่วนหัวข้อหลัก -->
+        <div class="border-b border-slate-100 pb-6 mb-6 text-center">
+            <h1 class="text-2xl font-bold text-slate-900">ระบบประเมินการนำเสนอ (สำหรับกรรมการ)</h1>
+            <p class="text-slate-500 mt-1 text-sm">ล็อกอินเข้าสู่ระบบอย่างปลอดภัยด้วย Magic Link ผ่านอีเมลของท่าน</p>
+        </div>
+
+        <!-- หน้าต่าง LOGIN (จะแสดงเฉพาะตอนยังไม่ได้ล็อกอิน) -->
+        <div id="login_section" class="bg-slate-50 p-6 rounded-xl border border-slate-100 shadow-sm max-w-md mx-auto">
+            <h2 class="text-md font-bold text-slate-800 mb-2 text-center">🔐 กรุณาเข้าสู่ระบบก่อนใช้งาน</h2>
+            <p class="text-xs text-slate-500 mb-4 text-center">พิมพ์อีเมลของท่าน ระบบจะส่งลิงก์สำหรับคลิกเข้าสู่ระบบ (Magic Link) ไปที่กล่องข้อความเข้าทันที โดยไม่ต้องใช้รหัสผ่านหรือ OTP</p>
+            <div class="space-y-3">
+                <input type="email" id="auth_email" 
+                    class="w-full px-4 py-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition"
+                    placeholder="example@university.ac.th">
+                <button onclick="handleLogin()" 
+                    class="w-full px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm flex justify-center items-center gap-1">
+                    ✉️ ส่งลิงก์เข้าสู่ระบบทาง Email
+                </button>
             </div>
         </div>
-    </nav>
 
-    <div class="container my-4">
-        <!-- ส่วนที่ 1: หน้าจอ Authentication (OTP Login) -->
-        <div id="auth-section" class="row justify-content-center my-5">
-            <div class="col-md-5">
-                <div class="card p-4">
-                    <h4 class="text-center mb-4 fw-bold text-primary">เข้าสู่ระบบผู้ประเมิน</h4>
-                    
-                    <!-- ฟอร์มกรอกอีเมล -->
-                    <div id="email-form-group">
-                        <div class="mb-3">
-                            <label for="login-email" class="form-label">อีเมลอาจารย์ / กรรมการ</label>
-                            <input type="email" class="form-control" id="login-email" placeholder="example@university.ac.th">
-                        </div>
-                        <button class="btn btn-primary w-100" id="btn-send-otp" onclick="sendOTP()">ขอรหัส OTP เข้าสู่ระบบ</button>
-                    </div>
-
-                    <!-- ฟอร์มกรอก OTP (จะซ่อนไว้ตอนแรก) -->
-                    <div id="otp-form-group" class="d-none mt-3">
-                        <div class="alert alert-info py-2" style="font-size: 0.9rem;">
-                            ระบบได้ส่งรหัส OTP ไปยังอีเมลของท่านแล้ว (ลิมิต 2 ครั้ง/ชม.)
-                        </div>
-                        <div class="mb-3">
-                            <label for="login-otp" class="form-label">รหัส OTP 6 หลัก</label>
-                            <input type="text" class="form-control text-center fs-4" id="login-otp" placeholder="000000" maxlength="6">
-                        </div>
-                        <button class="btn btn-success w-100" id="btn-verify-otp" onclick="verifyOTP()">ยืนยันรหัสเข้าสู่ระบบ</button>
-                    </div>
+        <!-- หน้าต่าง DASHBOARD (จะแสดงเมื่อล็อกอินสำเร็จแล้ว) -->
+        <div id="dashboard_section" class="hidden animate-fade-in">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400 block">ผู้ประเมินปัจจุบัน:</span>
+                    <span id="evaluator_badge" class="text-sm font-bold text-slate-700 font-mono"></span>
                 </div>
+                <button onclick="handleLogout()" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 rounded-lg text-xs font-semibold transition shadow-xs">
+                    🚪 ออกจากระบบ
+                </button>
             </div>
-        </div>
 
-        <!-- ส่วนที่ 2: หน้าจอหลักของระบบหลัง Login สำเร็จ -->
-        <div id="main-app-section" class="d-none">
+            <!-- เมนูแท็บสลับหน้า -->
+            <div class="flex border-b border-slate-200 mb-6 gap-2">
+                <button id="tab_eval_btn" onclick="switchTab('eval')" class="px-4 py-2.5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition">
+                    ✍️ ลงคะแนนประเมิน
+                </button>
+                <button id="tab_summary_btn" onclick="switchTab('summary')" class="px-4 py-2.5 text-sm font-semibold text-slate-500 border-b-2 border-transparent hover:text-slate-700 transition">
+                    📊 หน้ารวมผลคะแนน (Rubric)
+                </button>
+            </div>
             
-            <!-- เมนูแท็บสลับระหว่างหน้าประเมิน กับ หน้ารวมผลคะแนน -->
-            <ul class="nav nav-tabs mb-4" id="appTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="eval-tab" data-bs-toggle="tab" data-bs-target="#eval-content" type="button" role="tab">✍️ ลงคะแนนประเมิน</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary-content" type="button" role="tab" onclick="loadEachQuestionScores()">📊 หน้ารวมผลคะแนน (Rubric)</button>
-                </li>
-            </ul>
-
-            <div class="tab-content" id="appTabsContent">
+            <!-- ส่วนที่ 1: ตารางรายชื่อนักศึกษาเพื่อลงคะแนน -->
+            <div id="tab_eval_content" class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-slate-800">📋 รายชื่อนักศึกษาและผลการประเมิน</h2>
+                </div>
                 
-                <!-- แท็บการลงคะแนนประเมิน -->
-                <div class="tab-pane fade show active" id="eval-content" role="tabpanel">
-                    <div class="row">
-                        <!-- แผงซ้าย: รายชื่อนักศึกษา -->
-                        <div class="col-md-4">
-                            <div class="card p-3">
-                                <h5 class="fw-bold mb-3 text-secondary">รายชื่อนักศึกษา</h5>
-                                <div class="list-group" id="students-list-container">
-                                    <div class="text-center text-muted py-3">กำลังโหลดรายชื่อนักศึกษา...</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- แผงขวา: ฟอร์มข้อคำถามการประเมิน -->
-                        <div class="col-md-8">
-                            <div class="card p-4" id="eval-form-card">
-                                <div id="form-welcome-msg" class="text-center py-5 text-muted">
-                                    <h5>👈 กรุณาเลือกรายชื่อนักศึกษาที่ต้องการประเมินจากแถบด้านซ้าย</h5>
-                                </div>
-
-                                <div id="actual-questions-form" class="d-none">
-                                    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-                                        <div>
-                                            <h4 class="fw-bold text-dark mb-1" id="selected-student-name">-</h4>
-                                            <span class="text-muted" id="selected-student-id">รหัส: -</span>
-                                        </div>
-                                        <span class="badge bg-warning text-dark fs-6" id="eval-status-badge">ยังไม่ได้บันทึก</span>
-                                    </div>
-
-                                    <!-- กล่องใส่ข้อคำถามที่จะถูก Generate มาจาก DB -->
-                                    <div id="questions-dynamic-container"></div>
-
-                                    <!-- ปุ่มกดบันทึกข้อมูล -->
-                                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-                                        <button class="btn btn-primary px-4" onclick="saveDraftEvaluation(false)">💾 บันทึกแบบร่าง (Draft)</button>
-                                        <button class="btn btn-success px-4" onclick="saveDraftEvaluation(true)">🚀 ส่งผลประเมินสมบูรณ์ (Submit)</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="overflow-x-auto border border-slate-100 rounded-xl shadow-sm bg-white">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 text-xs uppercase font-bold tracking-wider">
+                                <th class="p-4">รหัสนักศึกษา</th>
+                                <th class="p-4">ชื่อ - นามสกุล</th>
+                                <th class="p-4 text-center">สถานะ</th>
+                                <th class="p-4 text-center">การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student_table_body" class="text-sm divide-y divide-slate-100">
+                            <!-- รายชื่อจะวิ่งมาจาก JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
-
-                <!-- แท็บหน้ารวมผลคะแนนแยกรายข้อ (Rubric) -->
-                <div class="tab-pane fade" id="summary-content" role="tabpanel">
-                    <div class="card p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h4 class="fw-bold text-dark m-0">ตารางสรุปผลคะแนนแยกรายข้อประเมิน</h4>
-                            <button class="btn btn-outline-secondary btn-sm" onclick="loadEachQuestionScores()">🔄 รีเฟรชข้อมูล</button>
-                        </div>
-                        <p class="text-muted" style="font-size: 0.9rem;">* แสดงเฉพาะหัวข้อประเมินประเภทเกณฑ์รูบริก (ข้อ 1 - ข้อ 4) จากระบบฐานข้อมูลหลังบ้าน</p>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-striped align-middle">
-                                <thead class="table-dark text-center">
-                                    <tr>
-                                        <th style="width: 15%;">รหัสนักศึกษา</th>
-                                        <th style="width: 25%;">ชื่อ-นามสกุล</th>
-                                        <th style="width: 15%;">ข้อ 1<br><small>(เนื้อหาข้อมูล)</small></th>
-                                        <th style="width: 15%;">ข้อ 2<br><small>(การพูดถ่ายทอด)</small></th>
-                                        <th style="width: 15%;">ข้อ 3<br><small>(ความสวยงามสื่อ)</small></th>
-                                        <th style="width: 15%;">ข้อ 4<br><small>(เวลา/ตอบคำถาม)</small></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="summary-table-body">
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted py-4">กำลังโหลดข้อมูลสรุปคะแนน...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
             </div>
+
+            <!-- ส่วนที่ 2: หน้ารวมผลคะแนน Rubric แยกรายข้อ (เพิ่มเข้ามาใหม่) -->
+            <div id="tab_summary_content" class="hidden space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">📊 ตารางรวมผลคะแนน Rubric แยกรายข้อ</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">* แสดงคะแนนเฉพาะข้อประเมินที่เป็นเกณฑ์รูบริก</p>
+                    </div>
+                    <button onclick="fetchSummaryScores()" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-blue-600 rounded-lg text-xs font-semibold shadow-2xs transition">
+                        🔄 รีเฟรชคะแนน
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-100 rounded-xl shadow-sm bg-white">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 bg-slate-900 text-white text-xs uppercase font-bold tracking-wider text-center">
+                                <th class="p-3 text-left">รหัสนักศึกษา</th>
+                                <th class="p-3 text-left">ชื่อ - นามสกุล</th>
+                                <th class="p-3 bg-slate-800">ข้อ 1</th>
+                                <th class="p-3 bg-slate-800">ข้อ 2</th>
+                                <th class="p-3 bg-slate-800">ข้อ 3</th>
+                                <th class="p-3 bg-slate-800">ข้อ 4</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summary_table_body" class="text-sm divide-y divide-slate-100 font-medium">
+                            <!-- คะแนนแยกรายข้อโชว์ที่นี่ -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <!-- Supabase JS Client library -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Bootstrap JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- MODAL POPUP ฟอร์มลงคะแนนที่ดึงโจทย์และเกณฑ์รูบริกแบบ Dynamic -->
+    <div id="evaluationModal" class="fixed inset-0 bg-slate-900/40 hidden flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-xs">
+        <div class="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 relative shadow-xl border border-slate-100">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-2xl transition">&times;</button>
+            
+            <div class="mb-5 border-b border-slate-100 pb-3">
+                <span class="text-xs font-bold text-blue-600 tracking-wide uppercase">บันทึกผลการให้คะแนน</span>
+                <h3 id="modal_student_name" class="text-xl font-bold text-slate-800 mt-0.5"></h3>
+                <p class="text-xs text-slate-400 font-mono mt-1" id="modal_student_id_display"></p>
+            </div>
 
+            <form id="evaluationForm" class="space-y-5">
+                <input type="hidden" id="modal_student_id">
+
+                <!-- พื้นที่สำหรับสร้างคำถามรูบริกแบบ Dynamic จากฐานข้อมูล -->
+                <div id="dynamic_questions_area" class="space-y-4"></div>
+
+                <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" id="btn_save_draft" onclick="executeSubmit(false)" class="flex-1 py-2.5 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-xl text-sm transition">
+                        💾 บันทึกร่างชั่วคราว
+                    </button>
+                    <button type="button" id="btn_final_submit" onclick="executeSubmit(true)" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition shadow-sm">
+                        🚀 ส่งผลสมบูรณ์ (ล็อกถาวร ห้ามแก้ไข)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ------------------ JAVASCRIPT LOGIC ------------------ -->
     <script>
-        // ==========================================
-        // 1. CONFIGURATION & INITIALIZATION
-        // ==========================================
-        const SUPABASE_URL = "YOUR_SUPABASE_URL"; // ⚠️ แทนที่ด้วย URL ของคุณ
-        const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; // ⚠️ แทนที่ด้วย Anon Key ของคุณ
-
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+        const dbURL = "https://mwdnpxuqqdzcnjqpjzdh.supabase.co";
+        const dbAnonKey = "sb_publishable_mVQGz4MlFDMgCfg0N8gTlw_LxfGmbyP";
+        
+        const db = supabase.createClient(dbURL, dbAnonKey);
+        
         let currentUser = null;
-        let allStudents = [];
-        let allQuestions = [];
-        let currentSelectedStudentId = null;
-        let loadedExistingScores = {}; 
+        let questionsCache = [];
+        let currentEvaluatorScores = [];
 
-        // ตรวจสอบสถานะการ Login ตอนเปิดหน้าเว็บ
-        window.addEventListener('DOMContentLoaded', async () => {
-            const { data: { session } } = await _supabase.auth.getSession();
+        // ตรวจสอบสถานะการล็อกอินทุกครั้งที่เปิดหน้าเว็บ[cite: 2]
+        document.addEventListener("DOMContentLoaded", async () => {
+            const { data: { session } } = await db.auth.getSession();
             if (session) {
-                setupAppUI(session.user);
+                currentUser = session.user;
+                showDashboard();
             } else {
-                showAuthUI();
+                showLogin();
             }
 
-            // ฟังความเปลี่ยนแปลงสถานะการ Login
-            _supabase.auth.onAuthStateChange((event, session) => {
+            // ดักฟังเหตุการณ์การเปลี่ยนสถานะล็อกอิน (เมื่อคลิกลิงก์จากเมลเข้ามา)[cite: 2]
+            db.auth.onAuthStateChange((_event, session) => {
                 if (session) {
-                    setupAppUI(session.user);
+                    currentUser = session.user;
+                    showDashboard();
                 } else {
-                    showAuthUI();
+                    currentUser = null;
+                    showLogin();
                 }
             });
         });
 
-        function showAuthUI() {
-            document.getElementById('auth-section').classList.remove('d-none');
-            document.getElementById('main-app-section').classList.add('d-none');
-            document.getElementById('btn-logout').classList.add('d-none');
-            document.getElementById('user-email-display').innerText = '';
+        function showLogin() {
+            document.getElementById('login_section').classList.remove('hidden');
+            document.getElementById('dashboard_section').classList.add('hidden');
         }
 
-        async function setupAppUI(user) {
-            currentUser = user;
-            document.getElementById('auth-section').classList.add('d-none');
-            document.getElementById('main-app-section').classList.remove('d-none');
-            document.getElementById('btn-logout').classList.remove('d-none');
-            document.getElementById('user-email-display').innerText = `ผู้ประเมิน: ${user.email}`;
+        async function showDashboard() {
+            document.getElementById('login_section').classList.add('hidden');
+            document.getElementById('dashboard_section').classList.remove('hidden');
+            document.getElementById('evaluator_badge').innerText = currentUser.email;
             
-            // โหลดข้อมูลพื้นฐานตารางหลัก
-            await loadStudentsList();
-            await loadQuestionsMaster();
+            await fetchQuestions();
+            await renderStudentTable();
         }
 
-        // ==========================================
-        // 2. AUTHENTICATION FUNCTIONS (OTP)
-        // ==========================================
-        async function sendOTP() {
-            const email = document.getElementById('login-email').value.trim();
-            if(!email) return alert('กรุณากรอกอีเมลก่อนครับ');
+        // สลับแท็บหน้าลงคะแนน / หน้ารวมผลคะแนน
+        function switchTab(tabName) {
+            const evalBtn = document.getElementById('tab_eval_btn');
+            const summaryBtn = document.getElementById('tab_summary_btn');
+            const evalContent = document.getElementById('tab_eval_content');
+            const summaryContent = document.getElementById('tab_summary_content');
 
-            const btn = document.getElementById('btn-send-otp');
-            btn.disabled = true;
-            btn.innerText = 'กำลังส่งรหัส...';
-
-            const { error } = await _supabase.auth.signInWithOtp({ email: email });
-
-            if (error) {
-                alert(`เกิดข้อผิดพลาดในการส่ง OTP: ${error.message}`);
-                btn.disabled = false;
-                btn.innerText = 'ขอรหัส OTP เข้าสู่ระบบ';
+            if (tabName === 'eval') {
+                evalBtn.className = "px-4 py-2.5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition";
+                summaryBtn.className = "px-4 py-2.5 text-sm font-semibold text-slate-500 border-b-2 border-transparent hover:text-slate-700 transition";
+                evalContent.classList.remove('hidden');
+                summaryContent.classList.add('hidden');
+                renderStudentTable();
             } else {
-                document.getElementById('email-form-group').classList.add('d-none');
-                document.getElementById('otp-form-group').classList.remove('d-none');
+                summaryBtn.className = "px-4 py-2.5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition";
+                evalBtn.className = "px-4 py-2.5 text-sm font-semibold text-slate-500 border-b-2 border-transparent hover:text-slate-700 transition";
+                summaryContent.classList.remove('hidden');
+                evalContent.classList.add('hidden');
+                fetchSummaryScores();
             }
         }
 
-        async function verifyOTP() {
-            const email = document.getElementById('login-email').value.trim();
-            const token = document.getElementById('login-otp').value.trim();
-            if(!token || token.length !== 6) return alert('กรุณากรอกรหัส OTP ให้ครบ 6 หลัก');
-
-            const btn = document.getElementById('btn-verify-otp');
-            btn.disabled = true;
-            btn.innerText = 'กำลังตรวจสอบ...';
-
-            const { data, error } = await _supabase.auth.verifyOtp({
+        // ระบบส่งลิงก์ Magic Link ไปยังอีเมล (ปรับปรุงข้อความแจ้งเตือน)
+        async function handleLogin() {
+            const email = document.getElementById('auth_email').value.trim().toLowerCase();
+            if (!email) { alert("⚠️ กรุณากรอกอีเมลของท่านก่อนครับ"); return; }
+            
+            const { error } = await db.auth.signInWithOtp({
                 email: email,
-                token: token,
-                type: 'magiclink'
+                options: { emailRedirectTo: 'https://jennafay.github.io/coop-proposal-eval-app/' }
             });
 
             if (error) {
-                alert(`รหัสไม่ถูกต้องหรือหมดอายุ: ${error.message}`);
-                btn.disabled = false;
-                btn.innerText = 'ยืนยันรหัสเข้าสู่ระบบ';
+                alert("เกิดข้อผิดพลาด: " + error.message);
+            } else {
+                alert("🚀 ระบบส่ง Magic Link ไปที่อีเมลของท่านเรียบร้อยแล้ว! กรุณาเปิดกล่องข้อความในอีเมลแล้วคลิกที่ลิงก์เพื่อเข้าสู่ระบบโดยตรงได้ทันทีครับ (ไม่ต้องใช้รหัสผ่านหรือ OTP)");
             }
         }
 
         async function handleLogout() {
-            await _supabase.auth.signOut();
-            location.reload();
+            await db.auth.signOut();
+            window.location.reload();
         }
 
-        // ==========================================
-        // 3. CORE LOGIC: DATA LOADING
-        // ==========================================
-        async function loadStudentsList() {
-            const container = document.getElementById('students-list-container');
-            const { data, error } = await _supabase.from('students').select('*').order('student_id', { ascending: true });
-
-            if (error) {
-                container.innerHTML = `<div class="alert alert-danger p-2" style="font-size:0.85rem;">Error: ${error.message}</div>`;
-                return;
-            }
-
-            allStudents = data || [];
-            if(allStudents.length === 0) {
-                container.innerHTML = `<div class="text-center text-muted py-3">ไม่มีข้อมูลนักศึกษาในตาราง</div>`;
-                return;
-            }
-
-            container.innerHTML = '';
-            allStudents.forEach(st => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2';
-                button.id = `btn-student-${st.student_id}`;
-                button.onclick = () => selectStudentForEval(st.student_id, st.name);
-                button.innerHTML = `
-                    <div>
-                        <div class="fw-bold" style="font-size:0.95rem;">${st.name}</div>
-                        <small class="text-muted">${st.student_id}</small>
-                    </div>
-                `;
-                container.appendChild(button);
-            });
+        // ดึงรายการคำถามรูบริกจาก DB[cite: 2]
+        async function fetchQuestions() {
+            const { data, error } = await db.from('evaluation_questions').select('*').order('question_number');
+            if (!error) questionsCache = data;
         }
 
-        async function loadQuestionsMaster() {
-            const { data, error } = await _supabase.from('evaluation_questions').select('*').order('question_number', { ascending: true });
-            if (!error) allQuestions = data || [];
-        }
+        // แสดงผลตารางนักศึกษาตามโครงสร้างตารางเดิม[cite: 2]
+        async function renderStudentTable() {
+            try {
+                const { data: students, error: errStudents } = await db.from('students').select('student_id, name').order('student_id');
+                if (errStudents) throw errStudents;
 
-        // เมื่อกดเลือกตัวนักศึกษาจากรายการแผงซ้าย
-        async function selectStudentForEval(studentId, studentName) {
-            currentSelectedStudentId = studentId;
-            
-            // ไฮไลต์เลือกปุ่มแผงซ้าย
-            document.querySelectorAll('#students-list-container button').forEach(b => b.classList.remove('active'));
-            document.getElementById(`btn-student-${studentId}`).classList.add('active');
+                const { data: evals, error: errEvals } = await db.from('new_evaluations').select('*').eq('evaluator_id', currentUser.id);
+                if (errEvals) throw errEvals;
+                currentEvaluatorScores = evals;
 
-            // เปลี่ยนชื่อหัวฟอร์ม
-            document.getElementById('selected-student-name').innerText = studentName;
-            document.getElementById('selected-student-id').innerText = `รหัส: ${studentId}`;
-            
-            document.getElementById('form-welcome-msg').classList.add('d-none');
-            document.getElementById('actual-questions-form').classList.remove('d-none');
+                const tbody = document.getElementById('student_table_body');
+                tbody.innerHTML = "";
 
-            // ดึงผลการประเมินเก่าที่อาจเคยเซฟไว้ (ถ้ามี)
-            const { data, error } = await _supabase
-                .from('new_evaluations')
-                .select('*')
-                .eq('evaluator_id', currentUser.id)
-                .eq('student_id', studentId);
+                students.forEach(student => {
+                    const studentRecords = currentEvaluatorScores.filter(e => e.student_id === student.student_id);
+                    const isSubmitted = studentRecords.some(r => r.is_submitted === true);
+                    const isStarted = studentRecords.length > 0;
 
-            loadedExistingScores = {};
-            let isSubmitted = false;
+                    let badgeHTML = `<span class="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md text-xs font-medium">⏳ ยังไม่ประเมิน</span>`;
+                    if (isStarted) {
+                        badgeHTML = isSubmitted
+                            ? `<span class="px-2.5 py-1 bg-green-50 text-green-700 rounded-md text-xs font-bold border border-green-100">🔒 ส่งแล้ว (ล็อก)</span>`
+                            : `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-100">📝 ร่างชั่วคราว</span>`;
+                    }
 
-            if (!error && data) {
-                data.forEach(row => {
-                    loadedExistingScores[row.question_id] = row;
-                    if(row.is_submitted) isSubmitted = true;
+                    const tableRow = `
+                        <tr class="hover:bg-slate-50/80 transition duration-150">
+                            <td class="p-4 font-mono text-slate-600 font-semibold">${student.student_id}</td>
+                            <td class="p-4 font-semibold text-slate-800">${student.name}</td>
+                            <td class="p-4 text-center">${badgeHTML}</td>
+                            <td class="p-4 text-center">
+                                ${isSubmitted 
+                                    ? `<button disabled class="px-3 py-1.5 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-xs font-semibold cursor-not-allowed">✓ ประเมินแล้ว</button>`
+                                    : `<button onclick="openEvaluationModal('${student.student_id}', '${student.name}')" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold shadow-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition">✍️ ${isStarted ? 'แก้ไขร่าง' : 'ลงคะแนน'}</button>`
+                                }
+                            </td>
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', tableRow);
                 });
+            } catch (error) {
+                console.error("Error loading table:", error);
             }
-
-            // อัปเดตสเตตัสป้ายสถานะประเมิน
-            const badge = document.getElementById('eval-status-badge');
-            if (isSubmitted) {
-                badge.innerText = "ส่งผลเรียบร้อยแล้ว (🔒 ล็อก)";
-                badge.className = "badge bg-success fs-6";
-            } else if (Object.keys(loadedExistingScores).length > 0) {
-                badge.innerText = "กำลังร่าง (Draft)";
-                badge.className = "badge bg-warning text-dark fs-6";
-            } else {
-                badge.innerText = "ยังไม่ได้บันทึก";
-                badge.className = "badge bg-secondary fs-6";
-            }
-
-            // วาดแบบฟอร์มคำถามลงหน้าจอ
-            renderQuestionsForm(isSubmitted);
         }
 
-        // สั่งวาดฟอร์มคำถามข้อ 1-6 แบบไดนามิกส์
-        function renderQuestionsForm(isLocked) {
-            const container = document.getElementById('questions-dynamic-container');
-            container.innerHTML = '';
+        // ฟังก์ชันใหม่: ดึงคะแนนรูบริกมาแยกคอลัมน์กางให้เห็นที่หน้ารวม
+        async function fetchSummaryScores() {
+            const summaryBody = document.getElementById('summary_table_body');
+            summaryBody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-400 py-6">⏳ กำลังโหลดตารางสรุปคะแนนเกณฑ์รูบริก...</td></tr>`;
 
-            allQuestions.forEach(q => {
-                const existingData = loadedExistingScores[q.id] || {};
-                const cardDiv = document.createElement('div');
-                cardDiv.className = "card p-3 bg-light mb-3 border";
+            try {
+                // ดึงข้อมูลคะแนนเฉพาะของตัวผู้ประเมินปัจจุบันที่ล็อกอินอยู่ และกรองประเภทคำถามรูบริกผ่าน inner join หน้าบ้าน
+                const { data, error } = await db
+                    .from('new_evaluations')
+                    .select(`
+                        score_value,
+                        students ( student_id, name ),
+                        evaluation_questions ! inner ( question_number, question_type )
+                    `)
+                    .eq('evaluator_id', currentUser.id)
+                    .eq('evaluation_questions.question_type', 'rubric');
 
-                cardDiv.innerHTML = `<h6 class="fw-bold text-dark mb-2">${q.question_number}. ${q.question_text}</h6>`;
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    summaryBody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-400 py-6">❌ คุณยังไม่ได้ทำการบันทึกคะแนนเกณฑ์รูบริกของนักศึกษาท่านใดไว้เลยตอนนี้</td></tr>`;
+                    return;
+                }
+
+                // จัดกลุ่มข้อมูลให้อยู่ในโครงสร้าง { student_id: { name, scores: { 1: score, 2: score ... } } }
+                const scoreMap = {};
+                data.forEach(item => {
+                    const student = item.students;
+                    const question = item.evaluation_questions;
+                    if (!student || !question) return;
+
+                    if (!scoreMap[student.student_id]) {
+                        scoreMap[student.student_id] = {
+                            id: student.student_id,
+                            name: student.name,
+                            scores: {}
+                        };
+                    }
+                    scoreMap[student.student_id].scores[question.question_number] = item.score_value;
+                });
+
+                summaryBody.innerHTML = "";
+                const sortedStudents = Object.values(scoreMap).sort((a, b) => a.id - b.id);
+
+                sortedStudents.forEach(student => {
+                    const q1 = student.scores[1] !== undefined ? `${student.scores[1]} / 4` : '-';
+                    const q2 = student.scores[2] !== undefined ? `${student.scores[2]} / 4` : '-';
+                    const q3 = student.scores[3] !== undefined ? `${student.scores[3]} / 4` : '-';
+                    const q4 = student.scores[4] !== undefined ? `${student.scores[4]} / 4` : '-';
+
+                    const rowHTML = `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-3.5 font-mono text-slate-500 font-bold">${student.id}</td>
+                            <td class="p-3.5 text-slate-800">${student.name}</td>
+                            <td class="p-3.5 text-center text-blue-600 font-bold bg-blue-50/20">${q1}</td>
+                            <td class="p-3.5 text-center text-blue-600 font-bold bg-blue-50/20">${q2}</td>
+                            <td class="p-3.5 text-center text-blue-600 font-bold bg-blue-50/20">${q3}</td>
+                            <td class="p-3.5 text-center text-blue-600 font-bold bg-blue-50/20">${q4}</td>
+                        </tr>
+                    `;
+                    summaryBody.insertAdjacentHTML('beforeend', rowHTML);
+                });
+
+            } catch (err) {
+                summaryBody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 py-4">เกิดข้อผิดพลาด: ${err.message}</td></tr>`;
+            }
+        }
+
+        // เปิด Modal ประเมิน และใส่คำอธิบายรูบริก[cite: 2]
+        function openEvaluationModal(studentId, studentName) {
+            document.getElementById('modal_student_id').value = studentId;
+            document.getElementById('modal_student_name').innerText = studentName;
+            document.getElementById('modal_student_id_display').innerText = "รหัสนักศึกษา: " + studentId;
+            
+            const area = document.getElementById('dynamic_questions_area');
+            area.innerHTML = "";
+
+            const studentRecords = currentEvaluatorScores.filter(e => e.student_id === parseInt(studentId));
+
+            questionsCache.forEach(q => {
+                const answer = studentRecords.find(r => r.question_id === q.id);
+                let inputHTML = "";
 
                 if (q.question_type === 'rubric') {
-                    // สร้างปุ่มตัวเลือกเรดิโอคะแนน รูบริก 1-4 คะแนน
-                    const optionsContainer = document.createElement('div');
-                    optionsContainer.className = "d-flex flex-column gap-2 mt-2";
+                    const descs = {
+                        1: q.rubric_desc_1 || "ปรับปรุง",
+                        2: q.rubric_desc_2 || "พอใช้",
+                        3: q.rubric_desc_3 || "ดี",
+                        4: q.rubric_desc_4 || "ดีมาก"
+                    };
 
-                    for (let score = 1; score <= 4; score++) {
-                        const descText = q[`rubric_desc_${score}`] || `เกณฑ์คะแนนระดับ ${score}`;
-                        const isChecked = existingData.score_value === score ? 'checked' : '';
-                        const isDisabled = isLocked ? 'disabled' : '';
-
-                        optionsContainer.innerHTML += `
-                            <label class="p-2 border rounded bg-white rubric-option d-flex align-items-center m-0">
-                                <input type="radio" name="q_score_${q.id}" value="${score}" class="me-2" ${isChecked} ${isDisabled}>
-                                <span style="font-size:0.9rem;"><strong>${score} คะแนน:</strong> ${descText}</span>
-                            </label>
-                        `;
-                    }
-                    cardDiv.appendChild(optionsContainer);
+                    inputHTML = `
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs text-center font-medium text-slate-600">
+                            ${[1, 2, 3, 4].map(num => `
+                                <label class="p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50/50 block text-left sm:text-center transition">
+                                    <input type="radio" name="q_${q.id}" value="${num}" ${answer?.score_value === num ? 'checked' : ''} class="mb-1 mr-2 sm:mr-0">
+                                    <span class="font-bold text-sm sm:block text-blue-600">${num}</span>
+                                    <span class="block text-[11px] text-slate-400 mt-1 font-normal leading-tight">${descs[num]}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    `;
                 } else {
-                    // หากเป็นคำถามแบบประเภท text (ข้อเสนอแนะ) ให้สร้างช่องพิมพ์ Textarea
-                    const textValue = existingData.text_value || '';
-                    const isReadOnly = isLocked ? 'readonly' : '';
-                    cardDiv.innerHTML += `
-                        <textarea class="form-control mt-2" name="q_text_${q.id}" rows="3" placeholder="พิมพ์ข้อเสนอแนะแนะแนวหรือคำชื่นชมตรงนี้..." ${isReadOnly}>${textValue}</textarea>
+                    inputHTML = `
+                        <textarea id="q_${q.id}" rows="2" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white" placeholder="พิมพ์คำตอบ/ความคิดเห็นที่นี่...">${answer?.text_value || ""}</textarea>
                     `;
                 }
 
-                container.appendChild(cardDiv);
+                const block = `
+                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <p class="text-sm font-semibold text-slate-800 mb-2.5">${q.question_number}. ${q.question_text}</p>
+                        ${inputHTML}
+                    </div>
+                `;
+                area.insertAdjacentHTML('beforeend', block);
             });
+
+            document.getElementById('evaluationModal').classList.remove('hidden');
         }
 
-        // ==========================================
-        // 4. ACTION FUNCTION: SAVE / SUBMIT DRAFT
-        // ==========================================
-        async function saveDraftEvaluation(markAsSubmitted) {
-            if (!currentSelectedStudentId) return;
-            
-            if (markAsSubmitted && !confirm('⚠️ เมื่อกดส่งผลประเมินแล้ว จะไม่สามารถกลับมาแก้ไขคะแนนได้อีก มั่นใจใช่ไหมครับ?')) {
+        // จัดการส่งข้อมูลคะแนน[cite: 2]
+        async function executeSubmit(isFinalSubmission) {
+            const studentId = parseInt(document.getElementById('modal_student_id').value);
+            const payloads = [];
+
+            if (isFinalSubmission && !confirm("⚠️ คุณแน่ใจใช่ไหมที่จะส่งผลสมบูรณ์? หากส่งแล้วระบบจะทำการล็อกตารางของนักศึกษารายนี้ถาวรและจะไม่สามารถกลับมาแก้ไขคะแนนได้อีกนะยืนยันทำต่อไหมครับ")) {
                 return;
             }
 
-            const payloadToUpsert = [];
-
-            // วนลูปอ่านค่าคะแนนที่กรอกจากฟอร์มหน้าจอแต่ละข้อ
-            for (const q of allQuestions) {
-                let score_value = null;
-                let text_value = null;
+            for (let q of questionsCache) {
+                let scoreVal = null;
+                let textVal = null;
 
                 if (q.question_type === 'rubric') {
-                    const checkedRadio = document.querySelector(`input[name="q_score_${q.id}"]:checked`);
-                    if (checkedRadio) score_value = parseInt(checkedRadio.value);
+                    const checkedEl = document.querySelector(`input[name="q_${q.id}"]:checked`);
+                    scoreVal = checkedEl ? parseInt(checkedEl.value) : null;
                     
-                    // ป้องกันคนลืมกรอกคะแนนตอนกดส่งจริง
-                    if (markAsSubmitted && !score_value) {
-                        alert(`กรุณาเลือกคะแนนข้อที่ ${q.question_number} ให้เรียบร้อยก่อนส่งครับ`);
+                    if (isFinalSubmission && !scoreVal) {
+                        alert(`❌ กรุณาประเมินข้อ ${q.question_number} ให้เรียบร้อยก่อนส่งผลสมบูรณ์ครับ`);
                         return;
                     }
                 } else {
-                    const txtArea = document.querySelector(`textarea[name="q_text_${q.id}"]`);
-                    if (txtArea) text_value = txtArea.value.trim();
+                    textVal = document.getElementById(`q_${q.id}`).value.trim() || null;
                 }
 
-                payloadToUpsert.push({
+                payloads.push({
                     evaluator_id: currentUser.id,
                     evaluator_email: currentUser.email,
-                    student_id: currentSelectedStudentId,
+                    student_id: studentId,
                     question_id: q.id,
-                    score_value: score_value,
-                    text_value: text_value,
-                    is_submitted: markAsSubmitted
+                    score_value: scoreVal,
+                    text_value: textVal,
+                    is_submitted: isFinalSubmission
                 });
             }
 
-            // ยิงข้อมูลบันทึกลงตาราง Supabase (Upsert ด้วยเงื่อนไข UNIQUE บน evaluator_id, student_id, question_id)
-            const { error } = await _supabase.from('new_evaluations').upsert(payloadToUpsert);
+            try {
+                const { error } = await db
+                    .from('new_evaluations')
+                    .upsert(payloads, { onConflict: 'evaluator_id, student_id, question_id' });
 
-            if (error) {
-                alert(`เกิดข้อผิดพลาดในการบันทึก: ${error.message}`);
-            } else {
-                alert(markAsSubmitted ? '🚀 ส่งผลประเมินสำเร็จเรียบร้อยแล้ว!' : '💾 บันทึกแบบร่างเก็บไว้เรียบร้อยแล้ว');
-                // โหลดซ้ำเพื่อปรับโหมดแสดงผลฟอร์ม
-                await selectStudentForEval(currentSelectedStudentId, document.getElementById('selected-student-name').innerText);
+                if (error) throw error;
+
+                closeModal();
+                await renderStudentTable();
+                alert(isFinalSubmission ? "🔒 ส่งผลประเมินสมบูรณ์และล็อกข้อมูลเข้าฐานข้อมูลเรียบร้อยแล้วครับ" : "💾 บันทึกแบบร่างชั่วคราวสำเร็จ");
+            } catch (err) {
+                alert("ระบบปฏิเสธการเข้าถึง (สิทธิ์อาจถูกล็อกแล้ว): " + err.message);
             }
         }
 
-        // ==========================================
-        // 5. NEW COMPONENT: FETCH & RENDER SUMMARY
-        // ==========================================
-        async function loadEachQuestionScores() {
-            const tableBody = document.getElementById('summary-table-body');
-            tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">กำลังประมวลผลหน้ารวมคะแนนรูบริก...</td></tr>`;
-
-            // ดึงข้อมูลผ่าน JavaScript โดยใช้ความสัมพันธ์แบบ !inner เพื่อคัดกรองเฉพาะคำถามที่เป็น 'rubric' ทันที
-            const { data, error } = await _supabase
-                .from('new_evaluations')
-                .select(`
-                    score_value,
-                    students ( student_id, name ),
-                    evaluation_questions ! inner ( question_number, question_type )
-                `)
-                .eq('evaluation_questions.question_type', 'rubric'); // 🔥 กรองคำถามเฉพาะที่เป็นเกณฑ์ rubric (ข้อ 1-4) เท่านั้น
-
-            if (error) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">ยังไม่มีข้อมูลคะแนนรูบริกที่ถูกบันทึกในระบบในขณะนี้</td></tr>`;
-                return;
-            }
-
-            // จัดเรียงแพลตฟอร์มคะแนนดิบ ให้อยู่ในรูปกรุ๊ปรายบุคคลรายข้อ
-            const scoreBoard = {};
-
-            data.forEach(item => {
-                const student = item.students;
-                const question = item.evaluation_questions;
-                if (!student || !question) return;
-
-                if (!scoreBoard[student.student_id]) {
-                    scoreBoard[student.student_id] = {
-                        id: student.student_id,
-                        name: student.name,
-                        scores: {} // วางเก็บคะแนนแยกเป็น Object เช่น {1: 4, 2: 3, 3: 4, 4: 2}
-                    };
-                }
-                scoreBoard[student.student_id].scores[question.question_number] = item.score_value;
-            });
-
-            // วาดข้อมูลที่ทำการคลีนและประกอบร่างเสร็จแล้วลงสู่ HTML Table
-            tableBody.innerHTML = '';
-            const finalStudentsList = Object.values(scoreBoard).sort((a, b) => a.id - b.id);
-
-            finalStudentsList.forEach(student => {
-                const tr = document.createElement('tr');
-                
-                // ถอดคะแนนรูบริกรายข้อ (1-4) หากข้อไหนกรรมการยังไม่เคยแตะให้ขึ้นแดช (-)
-                const q1 = student.scores[1] !== undefined ? `${student.scores[1]} / 4` : '-';
-                const q2 = student.scores[2] !== undefined ? `${student.scores[2]} / 4` : '-';
-                const q3 = student.scores[3] !== undefined ? `${student.scores[3]} / 4` : '-';
-                const q4 = student.scores[4] !== undefined ? `${student.scores[4]} / 4` : '-';
-
-                tr.innerHTML = `
-                    <td class="text-center fw-bold text-secondary">${student.id}</td>
-                    <td>${student.name}</td>
-                    <td class="text-center fw-bold text-primary">${q1}</td>
-                    <td class="text-center fw-bold text-primary">${q2}</td>
-                    <td class="text-center fw-bold text-primary">${q3}</td>
-                    <td class="text-center fw-bold text-primary">${q4}</td>
-                `;
-                tableBody.appendChild(tr);
-            });
-        }
+        function closeModal() { document.getElementById('evaluationModal').classList.add('hidden'); }
     </script>
 </body>
 </html>
