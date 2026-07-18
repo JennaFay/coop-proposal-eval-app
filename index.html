@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบประเมินผลการนำเสนอ (Magic Link Auth & Rubric Summary)</title>
+    <title>ระบบประเมินผลการนำเสนอ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
@@ -48,71 +48,29 @@
                     🚪 ออกจากระบบ
                 </button>
             </div>
-
-            <!-- เมนูแท็บสลับหน้า -->
-            <div class="flex border-b border-slate-200 mb-6 gap-2">
-                <button id="tab_eval_btn" onclick="switchTab('eval')" class="px-4 py-2.5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition">
-                    ✍️ ลงคะแนนประเมิน
-                </button>
-                <button id="tab_summary_btn" onclick="switchTab('summary')" class="px-4 py-2.5 text-sm font-semibold text-slate-500 border-b-2 border-transparent hover:text-slate-700 transition">
-                    📊 หน้ารวมผลคะแนน (Rubric)
-                </button>
+            
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">📋 รายชื่อนักศึกษาและผลการประเมิน</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">* ผลคะแนนรูบริกรายข้อ (ข้อ 1 - 4) จะแสดงผลอยู่ใต้ชื่อของนักศึกษาโดยตรง</p>
+                </div>
             </div>
             
-            <!-- ส่วนที่ 1: ตารางรายชื่อนักศึกษาเพื่อลงคะแนน -->
-            <div id="tab_eval_content" class="space-y-4">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-lg font-bold text-slate-800">📋 รายชื่อนักศึกษาและผลการประเมิน</h2>
-                </div>
-                
-                <div class="overflow-x-auto border border-slate-100 rounded-xl shadow-sm bg-white">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 text-xs uppercase font-bold tracking-wider">
-                                <th class="p-4">รหัสนักศึกษา</th>
-                                <th class="p-4">ชื่อ - นามสกุล</th>
-                                <th class="p-4 text-center">สถานะ</th>
-                                <th class="p-4 text-center">การจัดการ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="student_table_body" class="text-sm divide-y divide-slate-100">
-                            <!-- รายชื่อจะวิ่งมาจาก JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
+            <div class="overflow-x-auto border border-slate-100 rounded-xl shadow-sm bg-white">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 text-xs uppercase font-bold tracking-wider">
+                            <th class="p-4 w-1/4">รหัสนักศึกษา</th>
+                            <th class="p-4 w-1/2">รายละเอียดและผลคะแนน Rubric</th>
+                            <th class="p-4 text-center w-1/6">สถานะ</th>
+                            <th class="p-4 text-center w-1/6">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="student_table_body" class="text-sm divide-y divide-slate-100">
+                        <!-- รายชื่อและคะแนนใต้ชื่อจะวิ่งมาจาก JavaScript -->
+                    </tbody>
+                </table>
             </div>
-
-            <!-- ส่วนที่ 2: หน้ารวมผลคะแนน Rubric แยกรายข้อ (เพิ่มเข้ามาใหม่) -->
-            <div id="tab_summary_content" class="hidden space-y-4">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-800">📊 ตารางรวมผลคะแนน Rubric แยกรายข้อ</h2>
-                        <p class="text-xs text-slate-400 mt-0.5">* แสดงคะแนนเฉพาะข้อประเมินที่เป็นเกณฑ์รูบริก</p>
-                    </div>
-                    <button onclick="fetchSummaryScores()" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-blue-600 rounded-lg text-xs font-semibold shadow-2xs transition">
-                        🔄 รีเฟรชคะแนน
-                    </button>
-                </div>
-
-                <div class="overflow-x-auto border border-slate-100 rounded-xl shadow-sm bg-white">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="border-b border-slate-200 bg-slate-900 text-white text-xs uppercase font-bold tracking-wider text-center">
-                                <th class="p-3 text-left">รหัสนักศึกษา</th>
-                                <th class="p-3 text-left">ชื่อ - นามสกุล</th>
-                                <th class="p-3 bg-slate-800">ข้อ 1</th>
-                                <th class="p-3 bg-slate-800">ข้อ 2</th>
-                                <th class="p-3 bg-slate-800">ข้อ 3</th>
-                                <th class="p-3 bg-slate-800">ข้อ 4</th>
-                            </tr>
-                        </thead>
-                        <tbody id="summary_table_body" class="text-sm divide-y divide-slate-100 font-medium">
-                            <!-- คะแนนแยกรายข้อโชว์ที่นี่ -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
         </div>
     </div>
 
@@ -188,33 +146,12 @@
             document.getElementById('dashboard_section').classList.remove('hidden');
             document.getElementById('evaluator_badge').innerText = currentUser.email;
             
+            // โหลดโจทย์และตารางข้อมูลหลังจากล็อกอินผ่าน[cite: 2]
             await fetchQuestions();
             await renderStudentTable();
         }
 
-        // สลับแท็บหน้าลงคะแนน / หน้ารวมผลคะแนน
-        function switchTab(tabName) {
-            const evalBtn = document.getElementById('tab_eval_btn');
-            const summaryBtn = document.getElementById('tab_summary_btn');
-            const evalContent = document.getElementById('tab_eval_content');
-            const summaryContent = document.getElementById('tab_summary_content');
-
-            if (tabName === 'eval') {
-                evalBtn.className = "px-4 py-2.5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition";
-                summaryBtn.className = "px-4 py-2.5 text-sm font-semibold text-slate-500 border-b-2 border-transparent hover:text-slate-700 transition";
-                evalContent.classList.remove('hidden');
-                summaryContent.classList.add('hidden');
-                renderStudentTable();
-            } else {
-                summaryBtn.className = "px-4 py-2.5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition";
-                evalBtn.className = "px-4 py-2.5 text-sm font-semibold text-slate-500 border-b-2 border-transparent hover:text-slate-700 transition";
-                summaryContent.classList.remove('hidden');
-                evalContent.classList.add('hidden');
-                fetchSummaryScores();
-            }
-        }
-
-        // ระบบส่งลิงก์ Magic Link ไปยังอีเมล (ปรับปรุงข้อความแจ้งเตือน)
+        // ระบบส่งลิงก์ Magic Link ไปยังอีเมล
         async function handleLogin() {
             const email = document.getElementById('auth_email').value.trim().toLowerCase();
             if (!email) { alert("⚠️ กรุณากรอกอีเมลของท่านก่อนครับ"); return; }
@@ -242,13 +179,15 @@
             if (!error) questionsCache = data;
         }
 
-        // แสดงผลตารางนักศึกษาตามโครงสร้างตารางเดิม[cite: 2]
+        // แสดงผลตารางนักศึกษาพร้อมรายละเอียดคะแนนรูบริกใต้ชื่อ
         async function renderStudentTable() {
             try {
+                // ดึงข้อมูลรายชื่อนักศึกษา[cite: 2]
                 const { data: students, error: errStudents } = await db.from('students').select('student_id, name').order('student_id');
                 if (errStudents) throw errStudents;
 
-                const { data: evals, error: errEvals } = await db.from('new_evaluations').select('*').eq('evaluator_id', currentUser.id);
+                // ดึงข้อมูลคะแนนทั้งหมดของผู้ประเมินคนนี้[cite: 2]
+                const { data: evals, error: errEvals } = await db.from('new_evaluations').select('*, evaluation_questions(question_number, question_type)').eq('evaluator_id', currentUser.id);
                 if (errEvals) throw errEvals;
                 currentEvaluatorScores = evals;
 
@@ -256,26 +195,56 @@
                 tbody.innerHTML = "";
 
                 students.forEach(student => {
+                    // กรองข้อมูลคะแนนของนักศึกษาแต่ละคน[cite: 2]
                     const studentRecords = currentEvaluatorScores.filter(e => e.student_id === student.student_id);
-                    const isSubmitted = studentRecords.some(r => r.is_submitted === true);
-                    const isStarted = studentRecords.length > 0;
+                    const isSubmitted = studentRecords.some(r => r.is_submitted === true); //[cite: 2]
+                    const isStarted = studentRecords.length > 0; //[cite: 2]
 
-                    let badgeHTML = `<span class="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md text-xs font-medium">⏳ ยังไม่ประเมิน</span>`;
-                    if (isStarted) {
-                        badgeHTML = isSubmitted
-                            ? `<span class="px-2.5 py-1 bg-green-50 text-green-700 rounded-md text-xs font-bold border border-green-100">🔒 ส่งแล้ว (ล็อก)</span>`
-                            : `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-100">📝 ร่างชั่วคราว</span>`;
+                    // ดึงคะแนนแยกแต่ละข้อรูบริก (ข้อ 1 - 4) เพื่อนำไปโชว์ใต้ชื่อ
+                    const getScore = (qNum) => {
+                        const rec = studentRecords.find(r => r.evaluation_questions?.question_number === qNum && r.evaluation_questions?.question_type === 'rubric');
+                        return rec && rec.score_value !== null ? `${rec.score_value} / 4` : '-';
+                    };
+
+                    let badgeHTML = `<span class="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md text-xs font-medium">⏳ ยังไม่ประเมิน</span>`; //[cite: 2]
+                    if (isStarted) { //[cite: 2]
+                        badgeHTML = isSubmitted //[cite: 2]
+                            ? `<span class="px-2.5 py-1 bg-green-50 text-green-700 rounded-md text-xs font-bold border border-green-100">🔒 ส่งแล้ว (ล็อก)</span>` //[cite: 2]
+                            : `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-100">📝 ร่างชั่วคราว</span>`; //[cite: 2]
                     }
 
+                    // สร้าง HTML โครงสร้างแถวตารางแบบที่มีกล่องคะแนน Rubric กางอยู่ใต้ชื่อ
                     const tableRow = `
                         <tr class="hover:bg-slate-50/80 transition duration-150">
-                            <td class="p-4 font-mono text-slate-600 font-semibold">${student.student_id}</td>
-                            <td class="p-4 font-semibold text-slate-800">${student.name}</td>
-                            <td class="p-4 text-center">${badgeHTML}</td>
-                            <td class="p-4 text-center">
+                            <td class="p-4 font-mono text-slate-600 font-semibold align-top pt-5">${student.student_id}</td>
+                            <td class="p-4 align-top pt-5">
+                                <div class="font-bold text-slate-800 text-base mb-2">${student.name}</div>
+                                
+                                <!-- ส่วนแสดงคะแนนใต้ชื่อแยกรายข้อคำถามรูบริก -->
+                                <div class="grid grid-cols-4 gap-1.5 max-w-md mt-1.5 text-center">
+                                    <div class="bg-blue-50/50 border border-blue-100 rounded-md p-1.5">
+                                        <div class="text-[10px] text-slate-400 font-semibold">ข้อ 1</div>
+                                        <div class="text-xs font-bold text-blue-600 mt-0.5">${getScore(1)}</div>
+                                    </div>
+                                    <div class="bg-blue-50/50 border border-blue-100 rounded-md p-1.5">
+                                        <div class="text-[10px] text-slate-400 font-semibold">ข้อ 2</div>
+                                        <div class="text-xs font-bold text-blue-600 mt-0.5">${getScore(2)}</div>
+                                    </div>
+                                    <div class="bg-blue-50/50 border border-blue-100 rounded-md p-1.5">
+                                        <div class="text-[10px] text-slate-400 font-semibold">ข้อ 3</div>
+                                        <div class="text-xs font-bold text-blue-600 mt-0.5">${getScore(3)}</div>
+                                    </div>
+                                    <div class="bg-blue-50/50 border border-blue-100 rounded-md p-1.5">
+                                        <div class="text-[10px] text-slate-400 font-semibold">ข้อ 4</div>
+                                        <div class="text-xs font-bold text-blue-600 mt-0.5">${getScore(4)}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-4 text-center align-top pt-5">${badgeHTML}</td>
+                            <td class="p-4 text-center align-top pt-4">
                                 ${isSubmitted 
-                                    ? `<button disabled class="px-3 py-1.5 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-xs font-semibold cursor-not-allowed">✓ ประเมินแล้ว</button>`
-                                    : `<button onclick="openEvaluationModal('${student.student_id}', '${student.name}')" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold shadow-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition">✍️ ${isStarted ? 'แก้ไขร่าง' : 'ลงคะแนน'}</button>`
+                                    ? `<button disabled class="px-3 py-1.5 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-xs font-semibold cursor-not-allowed">✓ ประเมินแล้ว</button>` //[cite: 2]
+                                    : `<button onclick="openEvaluationModal('${student.student_id}', '${student.name}')" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold shadow-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition">✍️ ${isStarted ? 'แก้ไขร่าง' : 'ลงคะแนน'}</button>` //[cite: 2]
                                 }
                             </td>
                         </tr>
@@ -284,73 +253,6 @@
                 });
             } catch (error) {
                 console.error("Error loading table:", error);
-            }
-        }
-
-        // ฟังก์ชันใหม่: ดึงคะแนนรูบริกมาแยกคอลัมน์กางให้เห็นที่หน้ารวม
-        async function fetchSummaryScores() {
-            const summaryBody = document.getElementById('summary_table_body');
-            summaryBody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-400 py-6">⏳ กำลังโหลดตารางสรุปคะแนนเกณฑ์รูบริก...</td></tr>`;
-
-            try {
-                // ดึงข้อมูลคะแนนเฉพาะของตัวผู้ประเมินปัจจุบันที่ล็อกอินอยู่ และกรองประเภทคำถามรูบริกผ่าน inner join หน้าบ้าน
-                const { data, error } = await db
-                    .from('new_evaluations')
-                    .select(`
-                        score_value,
-                        students ( student_id, name ),
-                        evaluation_questions ! inner ( question_number, question_type )
-                    `)
-                    .eq('evaluator_id', currentUser.id)
-                    .eq('evaluation_questions.question_type', 'rubric');
-
-                if (error) throw error;
-                if (!data || data.length === 0) {
-                    summaryBody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-400 py-6">❌ คุณยังไม่ได้ทำการบันทึกคะแนนเกณฑ์รูบริกของนักศึกษาท่านใดไว้เลยตอนนี้</td></tr>`;
-                    return;
-                }
-
-                // จัดกลุ่มข้อมูลให้อยู่ในโครงสร้าง { student_id: { name, scores: { 1: score, 2: score ... } } }
-                const scoreMap = {};
-                data.forEach(item => {
-                    const student = item.students;
-                    const question = item.evaluation_questions;
-                    if (!student || !question) return;
-
-                    if (!scoreMap[student.student_id]) {
-                        scoreMap[student.student_id] = {
-                            id: student.student_id,
-                            name: student.name,
-                            scores: {}
-                        };
-                    }
-                    scoreMap[student.student_id].scores[question.question_number] = item.score_value;
-                });
-
-                summaryBody.innerHTML = "";
-                const sortedStudents = Object.values(scoreMap).sort((a, b) => a.id - b.id);
-
-                sortedStudents.forEach(student => {
-                    const q1 = student.scores[1] !== undefined ? `${student.scores[1]} / 4` : '-';
-                    const q2 = student.scores[2] !== undefined ? `${student.scores[2]} / 4` : '-';
-                    const q3 = student.scores[3] !== undefined ? `${student.scores[3]} / 4` : '-';
-                    const q4 = student.scores[4] !== undefined ? `${student.scores[4]} / 4` : '-';
-
-                    const rowHTML = `
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="p-3.5 font-mono text-slate-500 font-bold">${student.id}</td>
-                            <td class="p-3.5 text-slate-800">${student.name}</td>
-                            <td class="p-3.5 text-center text-blue-600 font-bold bg-blue-50/20">${q1}</td>
-                            <td class="p-3.5 text-center text-blue-600 font-bold bg-blue-50/20">${q2}</td>
-                            <td class="p-3.5 text-center text-blue-600 font-bold bg-blue-50/20">${q3}</td>
-                            <td class="p-3.5 text-center text-blue-600 font-bold bg-blue-50/20">${q4}</td>
-                        </tr>
-                    `;
-                    summaryBody.insertAdjacentHTML('beforeend', rowHTML);
-                });
-
-            } catch (err) {
-                summaryBody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 py-4">เกิดข้อผิดพลาด: ${err.message}</td></tr>`;
             }
         }
 
@@ -371,10 +273,10 @@
 
                 if (q.question_type === 'rubric') {
                     const descs = {
-                        1: q.rubric_desc_1 || "ปรับปรุง",
-                        2: q.rubric_desc_2 || "พอใช้",
-                        3: q.rubric_desc_3 || "ดี",
-                        4: q.rubric_desc_4 || "ดีมาก"
+                        1: q.rubric_desc_1 || "ปรับปรุง", //[cite: 2]
+                        2: q.rubric_desc_2 || "พอใช้", //[cite: 2]
+                        3: q.rubric_desc_3 || "ดี", //[cite: 2]
+                        4: q.rubric_desc_4 || "ดีมาก" //[cite: 2]
                     };
 
                     inputHTML = `
@@ -443,6 +345,7 @@
             }
 
             try {
+                // อัปเดตข้อมูลบันทึกลงตาราง[cite: 2]
                 const { error } = await db
                     .from('new_evaluations')
                     .upsert(payloads, { onConflict: 'evaluator_id, student_id, question_id' });
@@ -457,6 +360,7 @@
             }
         }
 
+        document.getElementById('evaluationModal').classList.add('hidden');
         function closeModal() { document.getElementById('evaluationModal').classList.add('hidden'); }
     </script>
 </body>
