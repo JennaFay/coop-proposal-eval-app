@@ -19,22 +19,43 @@
         <!-- ส่วนหัวข้อหลัก -->
         <div class="border-b border-slate-100 pb-6 mb-6 text-center">
             <h1 class="text-2xl font-bold text-slate-900">ระบบประเมินการนำเสนอ (สำหรับกรรมการ)</h1>
-            <p class="text-slate-500 mt-1 text-sm">ล็อกอินเข้าสู่ระบบอย่างปลอดภัยด้วย Magic Link ผ่านอีเมลของท่าน</p>
+            <p class="text-slate-500 mt-1 text-sm">ล็อกอินเข้าสู่ระบบอย่างปลอดภัยด้วยรหัส OTP ผ่านอีเมลของท่าน</p>
         </div>
 
-        <!-- หน้าต่าง LOGIN (จะแสดงเฉพาะตอนยังไม่ได้ล็อกอิน) -->
+        <!-- หน้าต่าง LOGIN ด้วย OTP -->
         <div id="login_section" class="bg-slate-50 p-6 rounded-xl border border-slate-100 shadow-sm max-w-md mx-auto">
             <h2 class="text-md font-bold text-slate-800 mb-2 text-center">🔐 กรุณาเข้าสู่ระบบก่อนใช้งาน</h2>
-            <p class="text-xs text-slate-500 mb-4 text-center">พิมพ์อีเมลของท่าน ระบบจะส่งลิงก์สำหรับคลิกเข้าสู่ระบบ (Magic Link) ไปที่กล่องข้อความเข้าทันที โดยไม่ต้องใช้รหัสผ่านหรือ OTP</p>
-            <div class="space-y-3">
-                <input type="email" id="auth_email" 
-                    class="w-full px-4 py-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition"
-                    placeholder="example@university.ac.th">
-                <button onclick="handleLogin()" 
-                    class="w-full px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm flex justify-center items-center gap-1">
-                    ✉️ ส่งลิงก์เข้าสู่ระบบทาง Email
-                </button>
+            <p class="text-xs text-slate-500 mb-4 text-center">กรอกอีเมลเพื่อขอรับรหัส OTP 6 หลักสำหรับเข้าสู่ระบบ</p>
+            
+            <div class="space-y-4">
+                <!-- ส่วนที่ 1: กรอก Email -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">อีเมลผู้ประเมิน</label>
+                    <div class="flex gap-2">
+                        <input type="email" id="auth_email" 
+                            class="w-full px-4 py-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition text-sm"
+                            placeholder="example@university.ac.th">
+                        <button id="btn_send_otp" onclick="handleSendOTP()" 
+                            class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm text-xs whitespace-nowrap">
+                            📩 ขอรหัส OTP
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ส่วนที่ 2: กรอก รหัส OTP (ซ่อนไว้ก่อน ได้รับ OTP แล้วค่อยแสดง) -->
+                <div id="otp_container" class="hidden pt-3 border-t border-slate-200 animate-fade-in">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">กรอกรหัส OTP 6 หลักที่ได้รับในอีเมล</label>
+                    <input type="text" id="auth_otp" maxlength="6"
+                        class="w-full px-4 py-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition text-center font-mono text-lg tracking-widest uppercase mb-3"
+                        placeholder="123456">
+                    <button onclick="handleVerifyOTP()" 
+                        class="w-full px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition shadow-sm flex justify-center items-center gap-1 text-sm">
+                        🔑 ยืนยันรหัส OTP และเข้าสู่ระบบ
+                    </button>
+                </div>
             </div>
+            
+            <p id="login_msg" class="text-xs text-center mt-3 font-medium hidden"></p>
         </div>
 
         <!-- หน้าต่าง DASHBOARD (จะแสดงเมื่อล็อกอินสำเร็จแล้ว) -->
@@ -114,7 +135,7 @@
         let questionsCache = [];
         let currentEvaluatorScores = [];
 
-        // ตรวจสอบสถานะการล็อกอินทุกครั้งที่เปิดหน้าเว็บ[cite: 2]
+        // ตรวจสอบสถานะการล็อกอินทุกครั้งที่เปิดหน้าเว็บ[cite: 1]
         document.addEventListener("DOMContentLoaded", async () => {
             const { data: { session } } = await db.auth.getSession();
             if (session) {
@@ -124,7 +145,6 @@
                 showLogin();
             }
 
-            // ดักฟังเหตุการณ์การเปลี่ยนสถานะล็อกอิน (เมื่อคลิกลิงก์จากเมลเข้ามา)[cite: 2]
             db.auth.onAuthStateChange((_event, session) => {
                 if (session) {
                     currentUser = session.user;
@@ -146,25 +166,68 @@
             document.getElementById('dashboard_section').classList.remove('hidden');
             document.getElementById('evaluator_badge').innerText = currentUser.email;
             
-            // โหลดโจทย์และตารางข้อมูลหลังจากล็อกอินผ่าน[cite: 2]
             await fetchQuestions();
             await renderStudentTable();
         }
 
-        // ระบบส่งลิงก์ Magic Link ไปยังอีเมล
-        async function handleLogin() {
-            const email = document.getElementById('auth_email').value.trim().toLowerCase();
-            if (!email) { alert("⚠️ กรุณากรอกอีเมลของท่านก่อนครับ"); return; }
+        // 1. ฟังก์ชันส่งรหัส OTP ไปยังอีเมล
+        async function handleSendOTP() {
+            const emailInput = document.getElementById('auth_email');
+            const email = emailInput.value.trim().toLowerCase();
+            const btn = document.getElementById('btn_send_otp');
+            const msg = document.getElementById('login_msg');
+
+            if (!email) { alert("⚠️ กรุณากรอกอีเมลก่อนครับ"); return; }
             
-            const { error } = await db.auth.signInWithOtp({
+            btn.disabled = true;
+            btn.innerHTML = "⏳ กำลังส่ง...";
+            msg.classList.add('hidden');
+
+            const { error } = await db.auth.signInWithOtp({ email: email });
+
+            if (error) {
+                alert("เกิดข้อผิดพลาดในการส่ง OTP: " + error.message);
+                btn.disabled = false;
+                btn.innerHTML = "📩 ขอรหัส OTP";
+            } else {
+                // เปิดส่วนกรอก OTP
+                document.getElementById('otp_container').classList.remove('hidden');
+                msg.innerText = "🚀 ส่งรหัส OTP ไปยังอีเมลเรียบร้อยแล้ว! กรุณาเช็คกล่องข้อความ";
+                msg.className = "text-xs text-center mt-3 font-medium text-green-600 block";
+                
+                // นับถอยหลัง 30 วินาทีป้องกันการกดส่งซ้ำ
+                let cd = 30;
+                const timer = setInterval(() => {
+                    btn.innerHTML = `⏳ ส่งอีกครั้ง (${cd}s)`;
+                    cd--;
+                    if (cd < 0) {
+                        clearInterval(timer);
+                        btn.disabled = false;
+                        btn.innerHTML = "📩 ขอรหัส OTP";
+                    }
+                }, 1000);
+            }
+        }
+
+        // 2. ฟังก์ชันยืนยันรหัส OTP เพื่อเข้าสู่ระบบ
+        async function handleVerifyOTP() {
+            const email = document.getElementById('auth_email').value.trim().toLowerCase();
+            const token = document.getElementById('auth_otp').value.trim();
+
+            if (!email) { alert("⚠️ กรุณากรอกอีเมลครับ"); return; }
+            if (!token || token.length !== 6) { alert("⚠️ กรุณากรอกรหัส OTP 6 หลักให้ครบถ้วนครับ"); return; }
+
+            const { data, error } = await db.auth.verifyOtp({
                 email: email,
-                options: { emailRedirectTo: 'https://jennafay.github.io/coop-proposal-eval-app/' }
+                token: token,
+                type: 'email'
             });
 
             if (error) {
-                alert("เกิดข้อผิดพลาด: " + error.message);
+                alert("❌ รหัส OTP ไม่ถูกต้องหรือหมดอายุแล้ว: " + error.message);
             } else {
-                alert("🚀 ระบบส่ง Magic Link ไปที่อีเมลของท่านเรียบร้อยแล้ว! กรุณาเปิดกล่องข้อความในอีเมลแล้วคลิกที่ลิงก์เพื่อเข้าสู่ระบบโดยตรงได้ทันทีครับ (ไม่ต้องใช้รหัสผ่านหรือ OTP)");
+                currentUser = data.user;
+                showDashboard();
             }
         }
 
@@ -173,20 +236,18 @@
             window.location.reload();
         }
 
-        // ดึงรายการคำถามรูบริกจาก DB[cite: 2]
+        // ดึงรายการคำถามรูบริกจาก DB[cite: 1]
         async function fetchQuestions() {
             const { data, error } = await db.from('evaluation_questions').select('*').order('question_number');
             if (!error) questionsCache = data;
         }
 
-        // แสดงผลตารางนักศึกษาพร้อมรายละเอียดคะแนนรูบริกใต้ชื่อ
+        // แสดงผลตารางนักศึกษาพร้อมรายละเอียดคะแนนรูบริกใต้ชื่อ[cite: 1]
         async function renderStudentTable() {
             try {
-                // ดึงข้อมูลรายชื่อนักศึกษา[cite: 2]
                 const { data: students, error: errStudents } = await db.from('students').select('student_id, name').order('student_id');
                 if (errStudents) throw errStudents;
 
-                // ดึงข้อมูลคะแนนทั้งหมดของผู้ประเมินคนนี้[cite: 2]
                 const { data: evals, error: errEvals } = await db.from('new_evaluations').select('*, evaluation_questions(question_number, question_type)').eq('evaluator_id', currentUser.id);
                 if (errEvals) throw errEvals;
                 currentEvaluatorScores = evals;
@@ -195,32 +256,27 @@
                 tbody.innerHTML = "";
 
                 students.forEach(student => {
-                    // กรองข้อมูลคะแนนของนักศึกษาแต่ละคน[cite: 2]
                     const studentRecords = currentEvaluatorScores.filter(e => e.student_id === student.student_id);
-                    const isSubmitted = studentRecords.some(r => r.is_submitted === true); //[cite: 2]
-                    const isStarted = studentRecords.length > 0; //[cite: 2]
+                    const isSubmitted = studentRecords.some(r => r.is_submitted === true);
+                    const isStarted = studentRecords.length > 0;
 
-                    // ดึงคะแนนแยกแต่ละข้อรูบริก (ข้อ 1 - 4) เพื่อนำไปโชว์ใต้ชื่อ
                     const getScore = (qNum) => {
                         const rec = studentRecords.find(r => r.evaluation_questions?.question_number === qNum && r.evaluation_questions?.question_type === 'rubric');
                         return rec && rec.score_value !== null ? `${rec.score_value} / 4` : '-';
                     };
 
-                    let badgeHTML = `<span class="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md text-xs font-medium">⏳ ยังไม่ประเมิน</span>`; //[cite: 2]
-                    if (isStarted) { //[cite: 2]
-                        badgeHTML = isSubmitted //[cite: 2]
-                            ? `<span class="px-2.5 py-1 bg-green-50 text-green-700 rounded-md text-xs font-bold border border-green-100">🔒 ส่งแล้ว (ล็อก)</span>` //[cite: 2]
-                            : `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-100">📝 ร่างชั่วคราว</span>`; //[cite: 2]
+                    let badgeHTML = `<span class="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md text-xs font-medium">⏳ ยังไม่ประเมิน</span>`;
+                    if (isStarted) {
+                        badgeHTML = isSubmitted 
+                            ? `<span class="px-2.5 py-1 bg-green-50 text-green-700 rounded-md text-xs font-bold border border-green-100">🔒 ส่งแล้ว (ล็อก)</span>`
+                            : `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-bold border border-amber-100">📝 ร่างชั่วคราว</span>`;
                     }
 
-                    // สร้าง HTML โครงสร้างแถวตารางแบบที่มีกล่องคะแนน Rubric กางอยู่ใต้ชื่อ
                     const tableRow = `
                         <tr class="hover:bg-slate-50/80 transition duration-150">
                             <td class="p-4 font-mono text-slate-600 font-semibold align-top pt-5">${student.student_id}</td>
                             <td class="p-4 align-top pt-5">
                                 <div class="font-bold text-slate-800 text-base mb-2">${student.name}</div>
-                                
-                                <!-- ส่วนแสดงคะแนนใต้ชื่อแยกรายข้อคำถามรูบริก -->
                                 <div class="grid grid-cols-4 gap-1.5 max-w-md mt-1.5 text-center">
                                     <div class="bg-blue-50/50 border border-blue-100 rounded-md p-1.5">
                                         <div class="text-[10px] text-slate-400 font-semibold">ข้อ 1</div>
@@ -243,8 +299,8 @@
                             <td class="p-4 text-center align-top pt-5">${badgeHTML}</td>
                             <td class="p-4 text-center align-top pt-4">
                                 ${isSubmitted 
-                                    ? `<button disabled class="px-3 py-1.5 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-xs font-semibold cursor-not-allowed">✓ ประเมินแล้ว</button>` //[cite: 2]
-                                    : `<button onclick="openEvaluationModal('${student.student_id}', '${student.name}')" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold shadow-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition">✍️ ${isStarted ? 'แก้ไขร่าง' : 'ลงคะแนน'}</button>` //[cite: 2]
+                                    ? `<button disabled class="px-3 py-1.5 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-xs font-semibold cursor-not-allowed">✓ ประเมินแล้ว</button>`
+                                    : `<button onclick="openEvaluationModal('${student.student_id}', '${student.name}')" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold shadow-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition">✍️ ${isStarted ? 'แก้ไขร่าง' : 'ลงคะแนน'}</button>`
                                 }
                             </td>
                         </tr>
@@ -256,7 +312,7 @@
             }
         }
 
-        // เปิด Modal ประเมิน และใส่คำอธิบายรูบริก[cite: 2]
+        // เปิด Modal ประเมิน[cite: 1]
         function openEvaluationModal(studentId, studentName) {
             document.getElementById('modal_student_id').value = studentId;
             document.getElementById('modal_student_name').innerText = studentName;
@@ -273,10 +329,10 @@
 
                 if (q.question_type === 'rubric') {
                     const descs = {
-                        1: q.rubric_desc_1 || "ปรับปรุง", //[cite: 2]
-                        2: q.rubric_desc_2 || "พอใช้", //[cite: 2]
-                        3: q.rubric_desc_3 || "ดี", //[cite: 2]
-                        4: q.rubric_desc_4 || "ดีมาก" //[cite: 2]
+                        1: q.rubric_desc_1 || "ปรับปรุง",
+                        2: q.rubric_desc_2 || "พอใช้",
+                        3: q.rubric_desc_3 || "ดี",
+                        4: q.rubric_desc_4 || "ดีมาก"
                     };
 
                     inputHTML = `
@@ -308,7 +364,7 @@
             document.getElementById('evaluationModal').classList.remove('hidden');
         }
 
-        // จัดการส่งข้อมูลคะแนน[cite: 2]
+        // จัดการส่งข้อมูลคะแนน[cite: 1]
         async function executeSubmit(isFinalSubmission) {
             const studentId = parseInt(document.getElementById('modal_student_id').value);
             const payloads = [];
@@ -345,7 +401,6 @@
             }
 
             try {
-                // อัปเดตข้อมูลบันทึกลงตาราง[cite: 2]
                 const { error } = await db
                     .from('new_evaluations')
                     .upsert(payloads, { onConflict: 'evaluator_id, student_id, question_id' });
@@ -360,7 +415,6 @@
             }
         }
 
-        document.getElementById('evaluationModal').classList.add('hidden');
         function closeModal() { document.getElementById('evaluationModal').classList.add('hidden'); }
     </script>
 </body>
