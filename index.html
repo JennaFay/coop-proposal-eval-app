@@ -57,9 +57,14 @@
                     <span class="text-xs font-semibold text-slate-400 block">ผู้ประเมินปัจจุบัน:</span>
                     <span id="evaluator_badge" class="text-sm font-bold text-slate-700 font-mono"></span>
                 </div>
-                <button onclick="handleLogout()" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 rounded-lg text-xs font-semibold transition shadow-xs">
-                    🚪 ออกจากระบบ
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="openChangePasswordModal()" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 rounded-lg text-xs font-semibold transition shadow-xs">
+                        🔑 เปลี่ยนรหัสผ่าน
+                    </button>
+                    <button onclick="handleLogout()" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 rounded-lg text-xs font-semibold transition shadow-xs">
+                        🚪 ออกจากระบบ
+                    </button>
+                </div>
             </div>
             
             <div class="flex justify-between items-center mb-4">
@@ -109,6 +114,45 @@
                     </button>
                     <button type="button" id="btn_final_submit" onclick="executeSubmit(true)" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition shadow-sm">
                         🚀 ส่งผลสมบูรณ์ (ล็อกถาวร ห้ามแก้ไข)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP สำหรับเปลี่ยนรหัสผ่าน -->
+    <div id="changePasswordModal" class="fixed inset-0 bg-slate-900/40 hidden flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-xs">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 relative shadow-xl border border-slate-100">
+            <button onclick="closeChangePasswordModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-2xl transition">&times;</button>
+            
+            <div class="mb-4 border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-bold text-slate-800">🔑 เปลี่ยนรหัสผ่านเข้าใช้งาน</h3>
+                <p class="text-xs text-slate-400 mt-1">ตั้งรหัสผ่านใหม่สำหรับบัญชีของคุณ</p>
+            </div>
+
+            <form onsubmit="handleChangePassword(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)</label>
+                    <input type="password" id="new_password" required minlength="6"
+                        class="w-full px-4 py-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition text-sm"
+                        placeholder="••••••••">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ยืนยันรหัสผ่านใหม่</label>
+                    <input type="password" id="confirm_new_password" required minlength="6"
+                        class="w-full px-4 py-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition text-sm"
+                        placeholder="••••••••">
+                </div>
+
+                <p id="pwd_msg" class="text-xs font-medium hidden"></p>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeChangePasswordModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl text-sm transition">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" id="btn_change_pwd" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition shadow-sm">
+                        💾 บันทึกรหัสผ่านใหม่
                     </button>
                 </div>
             </form>
@@ -211,12 +255,10 @@
                 tbody.innerHTML = "";
 
                 students.forEach(student => {
-                    // [แก้ไขจุดที่ 1]: แปลง student_id ให้เป็น String ทั้งคู่ก่อนเทียบ
                     const studentRecords = currentEvaluatorScores.filter(e => String(e.student_id) === String(student.student_id));
                     const isSubmitted = studentRecords.some(r => r.is_submitted === true);
                     const isStarted = studentRecords.length > 0;
 
-                    // [แก้ไขจุดที่ 2]: ปรับวิธีเช็กคะแนนให้ยืดหยุ่น ยอมรับการเทียบทั้งผ่าน Relation และ question_id Direct
                     const getScore = (qNum) => {
                         const rec = studentRecords.find(r => {
                             const targetQ = questionsCache.find(q => String(q.question_number) === String(qNum));
@@ -282,7 +324,6 @@
             const area = document.getElementById('dynamic_questions_area');
             area.innerHTML = "";
 
-            // [แก้ไขจุดที่ 3]: เปรียบเทียบ student_id แบบ String เพื่อความแม่นยำ
             const studentRecords = currentEvaluatorScores.filter(e => String(e.student_id) === String(studentId));
 
             questionsCache.forEach(q => {
@@ -328,7 +369,6 @@
 
         async function executeSubmit(isFinalSubmission) {
             const studentIdRaw = document.getElementById('modal_student_id').value;
-            // รักษาค่า student_id ให้ส่งค่าได้ทั้งกรณี Integer หรือ String
             const studentId = isNaN(studentIdRaw) ? studentIdRaw : parseInt(studentIdRaw);
             const payloads = [];
 
@@ -380,6 +420,55 @@
         }
 
         function closeModal() { document.getElementById('evaluationModal').classList.add('hidden'); }
+
+        // --- ระบบเปลี่ยนรหัสผ่าน (Change Password Logic) ---
+        function openChangePasswordModal() {
+            document.getElementById('new_password').value = '';
+            document.getElementById('confirm_new_password').value = '';
+            document.getElementById('pwd_msg').classList.add('hidden');
+            document.getElementById('changePasswordModal').classList.remove('hidden');
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('changePasswordModal').classList.add('hidden');
+        }
+
+        async function handleChangePassword(event) {
+            event.preventDefault();
+
+            const newPassword = document.getElementById('new_password').value.trim();
+            const confirmPassword = document.getElementById('confirm_new_password').value.trim();
+            const msg = document.getElementById('pwd_msg');
+            const btn = document.getElementById('btn_change_pwd');
+
+            if (newPassword !== confirmPassword) {
+                msg.innerText = "❌ รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน";
+                msg.className = "text-xs font-medium text-red-500";
+                msg.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "⏳ กำลังบันทึก...";
+            msg.classList.add('hidden');
+
+            const { data, error } = await db.auth.updateUser({
+                password: newPassword
+            });
+
+            if (error) {
+                msg.innerText = "❌ เปลี่ยนรหัสผ่านไม่สำเร็จ: " + error.message;
+                msg.className = "text-xs font-medium text-red-500";
+                msg.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerText = "💾 บันทึกรหัสผ่านใหม่";
+            } else {
+                alert("✅ เปลี่ยนรหัสผ่านเรียบร้อยแล้ว! กรุณาใช้รหัสผ่านใหม่ในการล็อกอินครั้งถัดไป");
+                closeChangePasswordModal();
+                btn.disabled = false;
+                btn.innerText = "💾 บันทึกรหัสผ่านใหม่";
+            }
+        }
     </script>
 </body>
 </html>
