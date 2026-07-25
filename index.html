@@ -160,7 +160,6 @@
             await renderStudentTable();
         }
 
-        // ฟังก์ชันเข้าสู่ระบบด้วย Email + Password
         async function handlePasswordLogin(event) {
             event.preventDefault();
             
@@ -196,7 +195,7 @@
 
         async function fetchQuestions() {
             const { data, error } = await db.from('evaluation_questions').select('*').order('question_number');
-            if (!error) questionsCache = data;
+            if (!error) questionsCache = data || [];
         }
 
         async function renderStudentTable() {
@@ -206,19 +205,26 @@
 
                 const { data: evals, error: errEvals } = await db.from('new_evaluations').select('*, evaluation_questions(question_number, question_type)').eq('evaluator_id', currentUser.id);
                 if (errEvals) throw errEvals;
-                currentEvaluatorScores = evals;
+                currentEvaluatorScores = evals || [];
 
                 const tbody = document.getElementById('student_table_body');
                 tbody.innerHTML = "";
 
                 students.forEach(student => {
-                    const studentRecords = currentEvaluatorScores.filter(e => e.student_id === student.student_id);
+                    // [แก้ไขจุดที่ 1]: แปลง student_id ให้เป็น String ทั้งคู่ก่อนเทียบ
+                    const studentRecords = currentEvaluatorScores.filter(e => String(e.student_id) === String(student.student_id));
                     const isSubmitted = studentRecords.some(r => r.is_submitted === true);
                     const isStarted = studentRecords.length > 0;
 
+                    // [แก้ไขจุดที่ 2]: ปรับวิธีเช็กคะแนนให้ยืดหยุ่น ยอมรับการเทียบทั้งผ่าน Relation และ question_id Direct
                     const getScore = (qNum) => {
-                        const rec = studentRecords.find(r => r.evaluation_questions?.question_number === qNum && r.evaluation_questions?.question_type === 'rubric');
-                        return rec && rec.score_value !== null ? `${rec.score_value} / 4` : '-';
+                        const rec = studentRecords.find(r => {
+                            const targetQ = questionsCache.find(q => String(q.question_number) === String(qNum));
+                            const qIdMatch = targetQ && String(r.question_id) === String(targetQ.id);
+                            const relationMatch = r.evaluation_questions && String(r.evaluation_questions.question_number) === String(qNum);
+                            return qIdMatch || relationMatch;
+                        });
+                        return (rec && rec.score_value !== null && rec.score_value !== undefined) ? `${rec.score_value} / 4` : '-';
                     };
 
                     let badgeHTML = `<span class="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md text-xs font-medium">⏳ ยังไม่ประเมิน</span>`;
@@ -276,10 +282,11 @@
             const area = document.getElementById('dynamic_questions_area');
             area.innerHTML = "";
 
-            const studentRecords = currentEvaluatorScores.filter(e => e.student_id === parseInt(studentId));
+            // [แก้ไขจุดที่ 3]: เปรียบเทียบ student_id แบบ String เพื่อความแม่นยำ
+            const studentRecords = currentEvaluatorScores.filter(e => String(e.student_id) === String(studentId));
 
             questionsCache.forEach(q => {
-                const answer = studentRecords.find(r => r.question_id === q.id);
+                const answer = studentRecords.find(r => String(r.question_id) === String(q.id));
                 let inputHTML = "";
 
                 if (q.question_type === 'rubric') {
@@ -320,7 +327,9 @@
         }
 
         async function executeSubmit(isFinalSubmission) {
-            const studentId = parseInt(document.getElementById('modal_student_id').value);
+            const studentIdRaw = document.getElementById('modal_student_id').value;
+            // รักษาค่า student_id ให้ส่งค่าได้ทั้งกรณี Integer หรือ String
+            const studentId = isNaN(studentIdRaw) ? studentIdRaw : parseInt(studentIdRaw);
             const payloads = [];
 
             if (isFinalSubmission && !confirm("⚠️ คุณแน่ใจใช่ไหมที่จะส่งผลสมบูรณ์? หากส่งแล้วระบบจะทำการล็อกตารางของนักศึกษารายนี้ถาวรและจะไม่สามารถกลับมาแก้ไขคะแนนได้อีกนะยืนยันทำต่อไหมครับ")) {
@@ -340,7 +349,8 @@
                         return;
                     }
                 } else {
-                    textVal = document.getElementById(`q_${q.id}`).value.trim() || null;
+                    const textEl = document.getElementById(`q_${q.id}`);
+                    textVal = textEl ? textEl.value.trim() : null;
                 }
 
                 payloads.push({
@@ -365,7 +375,7 @@
                 await renderStudentTable();
                 alert(isFinalSubmission ? "🔒 ส่งผลประเมินสมบูรณ์และล็อกข้อมูลเข้าฐานข้อมูลเรียบร้อยแล้วครับ" : "💾 บันทึกแบบร่างชั่วคราวสำเร็จ");
             } catch (err) {
-                alert("ระบบปฏิเสธการเข้าถึง (สิทธิ์อาจถูกล็อกแล้ว): " + err.message);
+                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + err.message);
             }
         }
 
