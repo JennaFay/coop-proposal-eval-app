@@ -70,7 +70,7 @@
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h2 class="text-lg font-bold text-slate-800">📋 รายชื่อนักศึกษาและผลการประเมิน</h2>
-                    <p class="text-xs text-slate-400 mt-0.5">* ผลคะแนนรูบริกรายข้อ (ข้อ 1 - 4) จะแสดงผลอยู่ใต้ชื่อของนักศึกษาโดยตรง</p>
+                    <p class="text-xs text-slate-400 mt-0.5">* ผลคะแนนรูบริกรายข้อ (ข้อ 1 - 5) จะแสดงผลอยู่ใต้ชื่อของนักศึกษาโดยตรง</p>
                 </div>
             </div>
             
@@ -79,7 +79,7 @@
                     <thead>
                         <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 text-xs uppercase font-bold tracking-wider">
                             <th class="p-4 w-1/4">รหัสนักศึกษา</th>
-                            <th class="p-4 w-1/2">รายละเอียดและผลคะแนน Rubric</th>
+                            <th class="p-4 w-1/2">รายละเอียดและผลคะแนน Rubric (ข้อ 1-5)</th>
                             <th class="p-4 text-center w-1/6">สถานะ</th>
                             <th class="p-4 text-center w-1/6">การจัดการ</th>
                         </tr>
@@ -281,7 +281,8 @@
                             <td class="p-4 font-mono text-slate-600 font-semibold align-top pt-5">${student.student_id}</td>
                             <td class="p-4 align-top pt-5">
                                 <div class="font-bold text-slate-800 text-base mb-2">${student.name}</div>
-                                <div class="grid grid-cols-4 gap-1.5 max-w-md mt-1.5 text-center">
+                                <!-- ปรับเป็น Grid 5 ช่องสำหรับคะแนน Rubric ข้อ 1 - 5 -->
+                                <div class="grid grid-cols-5 gap-1.5 max-w-lg mt-1.5 text-center">
                                     <div class="bg-blue-50/50 border border-blue-100 rounded-md p-1.5">
                                         <div class="text-[10px] text-slate-400 font-semibold">ข้อ 1</div>
                                         <div class="text-xs font-bold text-blue-600 mt-0.5">${getScore(1)}</div>
@@ -297,6 +298,10 @@
                                     <div class="bg-blue-50/50 border border-blue-100 rounded-md p-1.5">
                                         <div class="text-[10px] text-slate-400 font-semibold">ข้อ 4</div>
                                         <div class="text-xs font-bold text-blue-600 mt-0.5">${getScore(4)}</div>
+                                    </div>
+                                    <div class="bg-blue-50/50 border border-blue-100 rounded-md p-1.5">
+                                        <div class="text-[10px] text-slate-400 font-semibold">ข้อ 5</div>
+                                        <div class="text-xs font-bold text-blue-600 mt-0.5">${getScore(5)}</div>
                                     </div>
                                 </div>
                             </td>
@@ -332,10 +337,10 @@
 
                 if (q.question_type === 'rubric') {
                     const descs = {
-                        1: q.rubric_desc_1 || "ปรับปรุง",
-                        2: q.rubric_desc_2 || "พอใช้",
-                        3: q.rubric_desc_3 || "ดี",
-                        4: q.rubric_desc_4 || "ดีมาก"
+                        1: q.rubric_desc_1 || q.option_1 || "ปรับปรุง",
+                        2: q.rubric_desc_2 || q.option_2 || "พอใช้",
+                        3: q.rubric_desc_3 || q.option_3 || "ดี",
+                        4: q.rubric_desc_4 || q.option_4 || "ดีมาก"
                     };
 
                     inputHTML = `
